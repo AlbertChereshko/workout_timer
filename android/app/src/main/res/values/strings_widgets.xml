@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_streak_name">Серия и активность</string>
+    <string name="widget_streak_description">Отслеживайте серию тренировочных дней, активность за неделю и не пропускайте занятия</string>
+    <string name="widget_quick_launcher_name">Быстрый запуск тренировки</string>
+    <string name="widget_quick_launcher_description">Быстрый запуск любимых комплексов в один клик с рабочего стола</string>
+</resources>
