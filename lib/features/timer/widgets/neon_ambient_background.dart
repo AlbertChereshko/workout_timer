@@ -86,6 +86,8 @@ class _NeonAmbientBackgroundState extends State<NeonAmbientBackground>
     }
     if (widget.theme != null) {
       switch (widget.phase) {
+        case TimerPhase.warmup:
+          return const Color(0xFFFFB300);
         case TimerPhase.work:
           return widget.theme!.workPhase;
         case TimerPhase.rest:
@@ -97,6 +99,8 @@ class _NeonAmbientBackgroundState extends State<NeonAmbientBackground>
       }
     }
     switch (widget.phase) {
+      case TimerPhase.warmup:
+        return const Color(0xFFFFB300);
       case TimerPhase.work:
         return const Color(0xFF00E676);
       case TimerPhase.rest:
@@ -116,6 +120,8 @@ class _NeonAmbientBackgroundState extends State<NeonAmbientBackground>
       return widget.theme!.accent;
     }
     switch (widget.phase) {
+      case TimerPhase.warmup:
+        return const Color(0xFFFF8F00);
       case TimerPhase.work:
         return const Color(0xFF76FF03);
       case TimerPhase.rest:

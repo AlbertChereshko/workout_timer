@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'timer_state.dart';
 import '../services/audio_service.dart';
 import '../services/notification_service.dart';
+import '../services/warmup_service.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../data/models/workout.dart';
 import '../data/models/workout_session.dart';
@@ -17,6 +18,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
   DateTime? _startedAt;
   DateTime? _phaseEndTime;
   int? _lastAnnouncedSec;
+  int _warmupSeconds = 0;
   
   TimerNotifier(this.ref) : super(TimerState(
     phase: TimerPhase.countdown,
@@ -29,13 +31,13 @@ class TimerNotifier extends StateNotifier<TimerState> {
     AudioService().init();
   }
 
-  void loadWorkout(Workout workout) {
+  void loadWorkout(Workout workout, {int warmupSeconds = 0}) {
     _timer?.cancel();
     _phaseEndTime = null;
     _lastAnnouncedSec = null;
     _workout = workout;
+    _warmupSeconds = warmupSeconds;
     _startedAt = null;
-    AudioService().applyWorkoutTypeSoundProfile(workout.type);
     
     int totalRounds = 1;
     int initialRound = 1;
@@ -48,16 +50,31 @@ class TimerNotifier extends StateNotifier<TimerState> {
       totalRounds = workout.tabataRounds;
     }
 
-    state = TimerState(
-      phase: TimerPhase.countdown,
-      currentRound: initialRound,
-      totalRounds: totalRounds,
-      remainingSeconds: 3,
-      totalPhaseSeconds: 3,
-      isRunning: false,
-      currentExerciseIndex: 0,
-      extraReps: 0,
-    );
+    if (warmupSeconds > 0) {
+      state = TimerState(
+        phase: TimerPhase.warmup,
+        currentRound: initialRound,
+        totalRounds: totalRounds,
+        remainingSeconds: warmupSeconds,
+        totalPhaseSeconds: warmupSeconds,
+        isRunning: false,
+        currentExerciseIndex: 0,
+        extraReps: 0,
+        warmupTotalSeconds: warmupSeconds,
+      );
+    } else {
+      state = TimerState(
+        phase: TimerPhase.countdown,
+        currentRound: initialRound,
+        totalRounds: totalRounds,
+        remainingSeconds: 3,
+        totalPhaseSeconds: 3,
+        isRunning: false,
+        currentExerciseIndex: 0,
+        extraReps: 0,
+        warmupTotalSeconds: 0,
+      );
+    }
   }
 
   void start() {
@@ -67,7 +84,16 @@ class TimerNotifier extends StateNotifier<TimerState> {
     state = state.copyWith(isRunning: true);
     _safeWakelock(true);
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 200), _tick);
+    if (state.phase == TimerPhase.warmup) {
+      final exercises = WarmupService.getExercisesForDuration(state.totalPhaseSeconds);
+      if (state.currentExerciseIndex < exercises.length) {
+        AudioService().speak(exercises[state.currentExerciseIndex].title);
+      }
+    } else if (state.remainingSeconds <= 3 && _lastAnnouncedSec != state.remainingSeconds) {
+      _lastAnnouncedSec = state.remainingSeconds;
+      AudioService().announceCountdown(state.remainingSeconds);
+    }
+    _timer = Timer.periodic(const Duration(milliseconds: 100), _tick);
   }
 
   void pause() {
@@ -90,8 +116,45 @@ class TimerNotifier extends StateNotifier<TimerState> {
 
   void restart() {
     if (_workout != null) {
-      loadWorkout(_workout!);
+      loadWorkout(_workout!, warmupSeconds: _warmupSeconds);
       start();
+    }
+  }
+
+  void skipWarmup() {
+    if (state.phase != TimerPhase.warmup) return;
+    _lastAnnouncedSec = null;
+    AudioService().announceRoundComplete();
+    HapticFeedback.mediumImpact();
+    state = state.copyWith(
+      phase: TimerPhase.countdown,
+      remainingSeconds: 3,
+      totalPhaseSeconds: 3,
+      currentExerciseIndex: 0,
+    );
+    if (state.isRunning) {
+      _phaseEndTime = DateTime.now().add(const Duration(seconds: 3));
+    }
+  }
+
+  void skipWarmupExercise() {
+    if (state.phase != TimerPhase.warmup) return;
+    final exercises = WarmupService.getExercisesForDuration(state.totalPhaseSeconds);
+    final nextIdx = state.currentExerciseIndex + 1;
+    if (nextIdx >= exercises.length) {
+      skipWarmup();
+    } else {
+      final newRemaining = state.totalPhaseSeconds - (nextIdx * 30);
+      _lastAnnouncedSec = null;
+      state = state.copyWith(
+        remainingSeconds: newRemaining,
+        currentExerciseIndex: nextIdx,
+      );
+      if (state.isRunning) {
+        _phaseEndTime = DateTime.now().add(Duration(seconds: newRemaining));
+      }
+      AudioService().speak(exercises[nextIdx].title);
+      HapticFeedback.mediumImpact();
     }
   }
 
@@ -140,9 +203,45 @@ class TimerNotifier extends StateNotifier<TimerState> {
 
     if (remaining <= 0) {
       _nextPhase();
-    } else if (remaining != state.remainingSeconds) {
-      state = state.copyWith(remainingSeconds: remaining);
-      if (remaining <= 3 && _lastAnnouncedSec != remaining) {
+    } else {
+      if (remaining != state.remainingSeconds) {
+        if (state.phase == TimerPhase.warmup) {
+          final elapsed = state.totalPhaseSeconds - remaining;
+          final currentExIdx = elapsed ~/ 30;
+          final secInCurrentEx = 30 - (elapsed % 30);
+
+          if (currentExIdx != state.currentExerciseIndex) {
+            state = state.copyWith(
+              remainingSeconds: remaining,
+              currentExerciseIndex: currentExIdx,
+            );
+            final exercises = WarmupService.getExercisesForDuration(state.totalPhaseSeconds);
+            if (currentExIdx < exercises.length) {
+              AudioService().announceRoundComplete();
+              AudioService().speak(exercises[currentExIdx].title);
+              HapticFeedback.mediumImpact();
+            }
+          } else {
+            state = state.copyWith(remainingSeconds: remaining);
+          }
+
+          if (secInCurrentEx > 3) {
+            AudioService().playMetronomeTick();
+          }
+
+          if (secInCurrentEx <= 3 && secInCurrentEx > 0 && _lastAnnouncedSec != remaining) {
+            _lastAnnouncedSec = remaining;
+            AudioService().announceCountdown(secInCurrentEx);
+          }
+          return;
+        }
+
+        state = state.copyWith(remainingSeconds: remaining);
+        if (state.phase == TimerPhase.work && remaining > 3) {
+          AudioService().playMetronomeTick();
+        }
+      }
+      if (state.phase != TimerPhase.warmup && remaining <= 3 && _lastAnnouncedSec != remaining) {
         _lastAnnouncedSec = remaining;
         AudioService().announceCountdown(remaining);
       }
@@ -223,6 +322,25 @@ class TimerNotifier extends StateNotifier<TimerState> {
   void _nextPhase() {
     if (_workout == null) return;
     _lastAnnouncedSec = null;
+
+    if (state.phase == TimerPhase.warmup) {
+      AudioService().announceRoundComplete();
+      HapticFeedback.heavyImpact();
+      NotificationService().showPhaseTransitionNotification(
+        title: '✅ Разминка окончена!',
+        body: 'Приготовьтесь к основной тренировке',
+      );
+      state = state.copyWith(
+        phase: TimerPhase.countdown,
+        remainingSeconds: 3,
+        totalPhaseSeconds: 3,
+        currentExerciseIndex: 0,
+      );
+      if (state.isRunning) {
+        _phaseEndTime = DateTime.now().add(const Duration(seconds: 3));
+      }
+      return;
+    }
 
     if (state.phase == TimerPhase.countdown) {
       final workTime = _getWorkTime(1);

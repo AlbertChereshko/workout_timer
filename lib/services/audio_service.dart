@@ -84,8 +84,20 @@ class AudioService {
   // O-Haptics profile for OnePlus 15: 'light', 'crisp', 'strong', 'heavy'
   String hapticProfile = 'crisp';
 
+  // Custom metronome ticking during work phase
+  bool isMetronomeEnabled = false;
+  String metronomeSound = 'clock_tick';
+
+  static const List<SoundOption> metronomeOptions = [
+    SoundOption(id: 'clock_tick', name: '🕰 Тиканье механических часов', asset: 'sounds/clock_tick.wav'),
+    SoundOption(id: 'click', name: '🪵 Деревянный щелчок / метроном', asset: 'sounds/click_tick.wav'),
+    SoundOption(id: 'nature_wood', name: '🌿 Бамбуковый стук', asset: 'sounds/nature_wood_tick.wav'),
+    SoundOption(id: 'clock_pendulum', name: '⏳ Маятниковый ход (Тик-Так)', asset: 'sounds/clock_pendulum.wav'),
+    SoundOption(id: 'arcade_tick', name: '🎮 Аркадный клик', asset: 'sounds/arcade_countdown.wav'),
+  ];
+
   static const List<SoundOption> countdownOptions = [
-    SoundOption(id: 'guitar_tick', name: '🎸 Гитарный щипок / флажолет (EMOM)', asset: 'sounds/guitar_pluck_tick.wav'),
+    SoundOption(id: 'arcade_tick', name: '🎮 Аркадный ретро-бип (АРКАДА)', asset: 'sounds/arcade_countdown.wav'),
     SoundOption(id: 'clock_tick', name: '🕰 Тиканье механических часов (AMRAP)', asset: 'sounds/clock_tick.wav'),
     SoundOption(id: 'beep', name: '⏱ Цифровой бип 950Hz (Табата)', asset: 'sounds/beep_countdown.wav'),
     SoundOption(id: 'nature_wood', name: '🌿 Бамбуковый стук (Природа)', asset: 'sounds/nature_wood_tick.wav'),
@@ -95,8 +107,8 @@ class AudioService {
   ];
 
   static const List<SoundOption> startOptions = [
-    SoundOption(id: 'guitar_strum', name: '🎸 Сочный гитарный бой (EMOM)', asset: 'sounds/guitar_strum_start.wav'),
-    SoundOption(id: 'whistle', name: '📣 Судейский свисток Fox-40 (Табата)', asset: 'sounds/whistle_start.wav'),
+    SoundOption(id: 'arcade_start', name: '🎮 Взрывной панч (АРКАДА)', asset: 'sounds/arcade_start.wav'),
+    SoundOption(id: 'arrow_start', name: '🏹 Стремительный свист стрелы', asset: 'sounds/arrow_start.wav'),
     SoundOption(id: 'clock_gong', name: '🕰 Бой старинных часов (AMRAP)', asset: 'sounds/clock_gong.wav'),
     SoundOption(id: 'gong', name: '🥊 Тяжёлый гонг (Табата)', asset: 'sounds/gong_rest.wav'),
     SoundOption(id: 'nature_bowl', name: '🧘 Тибетская поющая чаша (Природа)', asset: 'sounds/nature_singing_bowl.wav'),
@@ -106,28 +118,28 @@ class AudioService {
   ];
 
   static const List<SoundOption> restOptions = [
+    SoundOption(id: 'arcade_rest', name: '🎮 Быстрый взмах (АРКАДА)', asset: 'sounds/arcade_rest.wav'),
     SoundOption(id: 'gong', name: '🥊 Тяжёлый бронзовый гонг (Табата)', asset: 'sounds/gong_rest.wav'),
-    SoundOption(id: 'guitar_strum', name: '🎸 Гитарный аккорд (EMOM)', asset: 'sounds/guitar_strum_start.wav'),
     SoundOption(id: 'clock_gong', name: '🕰 Бой старинных часов (AMRAP)', asset: 'sounds/clock_gong.wav'),
     SoundOption(id: 'nature_drop', name: '💧 Лесной ручей / Капля дзэн (Природа)', asset: 'sounds/nature_zen_drop.wav'),
     SoundOption(id: 'clock_chime', name: '🔔 Куранты старых часов (Мелодия)', asset: 'sounds/clock_chime.wav'),
     SoundOption(id: 'bell', name: '🔔 Боксёрский колокол', asset: 'sounds/bell_boxing.wav'),
-    SoundOption(id: 'whistle', name: '📣 Судейский свисток', asset: 'sounds/whistle_start.wav'),
+    SoundOption(id: 'arrow_start', name: '🏹 Стремительный свист стрелы', asset: 'sounds/arrow_start.wav'),
     SoundOption(id: 'airhorn', name: '🎺 Стадионный горн', asset: 'sounds/horn_stadium.wav'),
   ];
 
   static const List<SoundOption> roundOptions = [
+    SoundOption(id: 'arcade_round', name: '🎮 Быстрый взмах / раунд (АРКАДА)', asset: 'sounds/arcade_rest.wav'),
     SoundOption(id: 'bell', name: '🔔 Боксёрский гонг / Колокол (Табата)', asset: 'sounds/bell_boxing.wav'),
-    SoundOption(id: 'guitar_strum', name: '🎸 Гитарный аккорд (EMOM)', asset: 'sounds/guitar_strum_start.wav'),
     SoundOption(id: 'clock_gong', name: '🕰 Бой старинных часов (AMRAP)', asset: 'sounds/clock_gong.wav'),
     SoundOption(id: 'nature_bowl', name: '🧘 Поющая чаша (Природа)', asset: 'sounds/nature_singing_bowl.wav'),
     SoundOption(id: 'clock_chime', name: '🔔 Куранты старых часов', asset: 'sounds/clock_chime.wav'),
-    SoundOption(id: 'whistle', name: '📣 Судейский свисток Fox-40', asset: 'sounds/whistle_start.wav'),
+    SoundOption(id: 'arrow_start', name: '🏹 Стремительный свист стрелы', asset: 'sounds/arrow_start.wav'),
     SoundOption(id: 'gong', name: '🥊 Бронзовый гонг', asset: 'sounds/gong_rest.wav'),
   ];
 
   static const List<SoundOption> finishOptions = [
-    SoundOption(id: 'guitar_finish', name: '🎸 Финальный аккорд гитары (EMOM)', asset: 'sounds/guitar_finish.wav'),
+    SoundOption(id: 'arcade_finish', name: '🎮 Победное сокровище (АРКАДА)', asset: 'sounds/arcade_finish.wav'),
     SoundOption(id: 'clock_chime', name: '🔔 Торжественные куранты старых часов (AMRAP)', asset: 'sounds/clock_chime.wav'),
     SoundOption(id: 'gong', name: '🥊 Финальный тройной гонг (Табата)', asset: 'sounds/gong_rest.wav'),
     SoundOption(id: 'nature_harmony', name: '🍃 Дзэн-гармония леса (Природа)', asset: 'sounds/nature_forest_harmony.wav'),
@@ -141,17 +153,17 @@ class AudioService {
     switch (type) {
       case WorkoutType.tabata:
         setEventSound('countdown', 'beep');
-        setEventSound('start', 'whistle');
+        setEventSound('start', 'arrow_start');
         setEventSound('rest', 'gong');
         setEventSound('round', 'bell');
         setEventSound('finish', 'gong');
         break;
       case WorkoutType.emom:
-        setEventSound('countdown', 'guitar_tick');
-        setEventSound('start', 'guitar_strum');
-        setEventSound('rest', 'guitar_strum');
-        setEventSound('round', 'guitar_strum');
-        setEventSound('finish', 'guitar_finish');
+        setEventSound('countdown', 'arcade_tick');
+        setEventSound('start', 'arcade_start');
+        setEventSound('rest', 'arcade_rest');
+        setEventSound('round', 'arcade_round');
+        setEventSound('finish', 'arcade_finish');
         break;
       case WorkoutType.amrap:
         setEventSound('countdown', 'clock_tick');
@@ -172,7 +184,7 @@ class AudioService {
       setEventSound('finish', 'clock_chime');
     } else if (schemeId == 'classic_sport') {
       setEventSound('countdown', 'beep');
-      setEventSound('start', 'whistle');
+      setEventSound('start', 'arrow_start');
       setEventSound('rest', 'gong');
       setEventSound('round', 'bell');
       setEventSound('finish', 'fanfare');
@@ -182,12 +194,12 @@ class AudioService {
       setEventSound('rest', 'nature_drop');
       setEventSound('round', 'nature_bowl');
       setEventSound('finish', 'nature_harmony');
-    } else if (schemeId == 'guitar') {
-      setEventSound('countdown', 'guitar_tick');
-      setEventSound('start', 'guitar_strum');
-      setEventSound('rest', 'guitar_strum');
-      setEventSound('round', 'guitar_strum');
-      setEventSound('finish', 'guitar_finish');
+    } else if (schemeId == 'arcade' || schemeId == 'guitar') {
+      setEventSound('countdown', 'arcade_tick');
+      setEventSound('start', 'arcade_start');
+      setEventSound('rest', 'arcade_rest');
+      setEventSound('round', 'arcade_round');
+      setEventSound('finish', 'arcade_finish');
     }
   }
 
@@ -246,6 +258,8 @@ class AudioService {
         restSound = box.get('sound_rest', defaultValue: 'clock_gong') as String;
         roundSound = box.get('sound_round', defaultValue: 'bell') as String;
         finishSound = box.get('sound_finish', defaultValue: 'clock_chime') as String;
+        isMetronomeEnabled = box.get('metronome_enabled', defaultValue: false) as bool;
+        metronomeSound = box.get('metronome_sound', defaultValue: 'clock_tick') as String;
       }
       try {
         await AudioPlayer.global.setAudioContext(nonInterruptingAudioContext);
@@ -297,6 +311,38 @@ class AudioService {
         Hive.box('settings').put('haptic_profile', profile);
       }
     } catch (_) {}
+  }
+
+  void setMetronomeEnabled(bool value) {
+    isMetronomeEnabled = value;
+    try {
+      if (Hive.isBoxOpen('settings')) {
+        Hive.box('settings').put('metronome_enabled', value);
+      }
+    } catch (_) {}
+  }
+
+  void setMetronomeSound(String soundId) {
+    metronomeSound = soundId;
+    try {
+      if (Hive.isBoxOpen('settings')) {
+        Hive.box('settings').put('metronome_sound', soundId);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> playMetronomeTick() async {
+    if (!isMetronomeEnabled) return;
+    if (soundMode != SoundMode.vibrationOnly) {
+      final option = metronomeOptions.firstWhere(
+        (o) => o.id == metronomeSound,
+        orElse: () => metronomeOptions.first,
+      );
+      await _playSound(option.asset);
+    }
+    if (isVibrationEnabled) {
+      vibrate([0, 15]);
+    }
   }
 
   Future<String?> pickCustomAudioFile() async {
@@ -379,6 +425,9 @@ class AudioService {
       case 'finish':
         finishSound = soundId;
         break;
+      case 'metronome':
+        metronomeSound = soundId;
+        break;
     }
   }
 
@@ -386,6 +435,11 @@ class AudioService {
     if (id.startsWith('custom:')) {
       return id; // Прямой путь к кастомному звуковому файлу с устройства
     }
+    // Совместимость с ранее сохранёнными гитарными звуками и свистком
+    if (id == 'guitar_tick') id = 'arcade_tick';
+    if (id == 'guitar_strum') id = event == 'finish' ? 'arcade_finish' : (event == 'rest' || event == 'round' ? 'arcade_rest' : 'arcade_start');
+    if (id == 'guitar_finish') id = 'arcade_finish';
+    if (id == 'whistle') id = 'arrow_start';
     List<SoundOption> options;
     switch (event) {
       case 'countdown':

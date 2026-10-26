@@ -29,7 +29,13 @@ class TagsRepository {
       t = t.substring(1).trim();
     }
     if (t.isEmpty) return t;
-    return t[0].toUpperCase() + t.substring(1);
+    final cap = t[0].toUpperCase() + t.substring(1);
+    // Normalize synonyms and redundant variations
+    if (cap == 'Верх тела') return 'Верх';
+    if (cap == 'Низ тела') return 'Низ';
+    if (cap == 'Резинки') return 'Резинка';
+    if (cap == 'ВИТ на всё тело' || cap == 'Вит') return 'ВИТ';
+    return cap;
   }
 
   List<String> getTags() {

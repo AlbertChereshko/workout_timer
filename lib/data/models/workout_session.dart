@@ -40,4 +40,7 @@ class WorkoutSession extends HiveObject {
 
   @HiveField(11)
   int extraReps = 0;
+
+  @HiveField(12)
+  int? rpe;
 }

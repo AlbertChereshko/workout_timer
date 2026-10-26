@@ -65,6 +65,8 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
 
   Color _getPhaseColor() {
     switch (widget.state.phase) {
+      case TimerPhase.warmup:
+        return const Color(0xFFFFB300);
       case TimerPhase.work:
         return widget.theme.workPhase;
       case TimerPhase.rest:
@@ -78,6 +80,8 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
 
   Color _getNextPhaseColor() {
     switch (widget.state.phase) {
+      case TimerPhase.warmup:
+        return widget.theme.workPhase;
       case TimerPhase.work:
         return widget.workout.tabataRestSeconds > 0
             ? const Color(0xFF00E676)
@@ -191,6 +195,7 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
     widget.onTogglePlayPause();
   }
 
+  // ignore: unused_element
   void _openSmartSwapSheet(BuildContext context) {
     if (widget.workout.exercises.isEmpty) return;
 
@@ -406,8 +411,17 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                     isLight: isLight,
                   )
                 : SafeArea(
-                    child: Column(
-                      children: [
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final availableHeight = constraints.maxHeight;
+                        final isCompactHeight = availableHeight < 720;
+                        final heightScale = (availableHeight / 780.0).clamp(0.78, 1.0);
+
+                        return Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 580),
+                            child: Column(
+                              children: [
                         // ВЕРХНИЙ БЛОК: Кнопка назад + Часы + Текущее упражнение + Кнопка замены + Музыка
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -447,21 +461,24 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                               ),
                               const SizedBox(height: 6),
 
-                              // Текущее упражнение: в строго фиксированном по высоте контейнере с увеличенным весом и шрифтом
-                              SizedBox(
-                                height: 64 * AppTypography.currentScale.headingScale,
+                              // Текущее упражнение: до 3 строк текста, свободное пространство распределено
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: 56.0 * AppTypography.currentScale.headingScale,
+                                  maxHeight: 98.0 * AppTypography.currentScale.headingScale,
+                                ),
                                 child: Center(
                                   child: Text(
                                     currentExerciseTitle,
-                                    maxLines: 2,
+                                    maxLines: 3,
                                     softWrap: true,
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
                                     style: _isOutlinedNumbers
                                         ? GoogleFonts.chakraPetch(
-                                            fontSize: 28.0 * AppTypography.currentScale.headingScale,
+                                            fontSize: 26.0 * AppTypography.currentScale.headingScale,
                                             fontWeight: FontWeight.w900,
-                                            letterSpacing: 1.5,
+                                            letterSpacing: 1.2,
                                             height: 1.15,
                                             foreground: Paint()
                                               ..style = PaintingStyle.stroke
@@ -471,9 +488,9 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                                                   : (isLight ? const Color(0xFF0A0F1D) : Colors.white)),
                                           )
                                         : GoogleFonts.chakraPetch(
-                                            fontSize: 28.0 * AppTypography.currentScale.headingScale,
+                                            fontSize: 26.0 * AppTypography.currentScale.headingScale,
                                             fontWeight: FontWeight.w900,
-                                            letterSpacing: 1.5,
+                                            letterSpacing: 1.2,
                                             height: 1.15,
                                             color: widget.state.phase == TimerPhase.rest
                                                 ? const Color(0xFF00E676)
@@ -500,42 +517,6 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                                 ),
                               ),
                               const SizedBox(height: 6),
-
-                              // Кнопка быстрой замены упражнения строго под названием (на месте прежнего общего времени)
-                              if (widget.workout.exercises.isNotEmpty)
-                                Tooltip(
-                                  message: 'Заменить упражнение на лету',
-                                  child: InkWell(
-                                    onTap: () => _openSmartSwapSheet(context),
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: (widget.state.phase == TimerPhase.rest
-                                                ? const Color(0xFF00E676)
-                                                : activeColor)
-                                            .withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: (widget.state.phase == TimerPhase.rest
-                                                  ? const Color(0xFF00E676)
-                                                  : activeColor)
-                                              .withValues(alpha: 0.35),
-                                          width: 1.2,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.swap_horiz_rounded,
-                                        size: 20,
-                                        color: widget.state.phase == TimerPhase.rest
-                                            ? const Color(0xFF00E676)
-                                            : (isLight ? const Color(0xFF0A0F1D) : Colors.white),
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                const SizedBox(height: 32),
                             ],
                           ),
                         ),
@@ -567,8 +548,8 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                       children: [
                         // 1. Фиксированный блок гигантских цифр отсчета (с динамическим круговым индикатором интервала для EMOM)
                         SizedBox(
-                          height: (widget.workout.type == WorkoutType.emom ? 186.0 : 144.0) * AppTypography.currentScale.timerScale,
-                          width: (widget.workout.type == WorkoutType.emom ? 186.0 : 200.0) * AppTypography.currentScale.timerScale,
+                          height: (widget.workout.type == WorkoutType.emom ? 186.0 : 144.0) * AppTypography.currentScale.timerScale * heightScale,
+                          width: (widget.workout.type == WorkoutType.emom ? 186.0 : 200.0) * AppTypography.currentScale.timerScale * heightScale,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -576,7 +557,7 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                                 SizedBox.expand(
                                   child: CircularProgressIndicator(
                                     value: (widget.state.remainingSeconds / (widget.workout.emomRoundDurationSeconds > 0 ? widget.workout.emomRoundDurationSeconds.toDouble() : 60.0)).clamp(0.0, 1.0),
-                                    strokeWidth: 4.5,
+                                    strokeWidth: 4.5 * heightScale,
                                     strokeCap: StrokeCap.round,
                                     backgroundColor: activeColor.withValues(alpha: isLight ? 0.12 : 0.18),
                                     valueColor: AlwaysStoppedAnimation<Color>(activeColor),
@@ -588,21 +569,21 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                                   '${widget.state.remainingSeconds}',
                                   style: _isOutlinedNumbers
                                       ? GoogleFonts.chakraPetch(
-                                          fontSize: (widget.workout.type == WorkoutType.emom ? 116 : 148) * AppTypography.currentScale.timerScale,
+                                          fontSize: (widget.workout.type == WorkoutType.emom ? 116 : 148) * AppTypography.currentScale.timerScale * heightScale,
                                           fontWeight: FontWeight.w800,
                                           height: 0.95,
-                                          letterSpacing: widget.workout.type == WorkoutType.emom ? 4.0 : 8.0,
+                                          letterSpacing: (widget.workout.type == WorkoutType.emom ? 4.0 : 8.0) * heightScale,
                                           fontFeatures: const [FontFeature.tabularFigures()],
                                           foreground: Paint()
                                             ..style = PaintingStyle.stroke
-                                            ..strokeWidth = 4.0
+                                            ..strokeWidth = 4.0 * heightScale
                                             ..color = activeColor,
                                         )
                                       : GoogleFonts.chakraPetch(
-                                          fontSize: (widget.workout.type == WorkoutType.emom ? 116 : 148) * AppTypography.currentScale.timerScale,
+                                          fontSize: (widget.workout.type == WorkoutType.emom ? 116 : 148) * AppTypography.currentScale.timerScale * heightScale,
                                           fontWeight: FontWeight.w800,
                                           height: 0.95,
-                                          letterSpacing: widget.workout.type == WorkoutType.emom ? 4.0 : 8.0,
+                                          letterSpacing: (widget.workout.type == WorkoutType.emom ? 4.0 : 8.0) * heightScale,
                                           fontFeatures: const [FontFeature.tabularFigures()],
                                           color: isLight ? const Color(0xFF0A0F1D) : Colors.white,
                                           shadows: [
@@ -627,7 +608,7 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                               ? '00:00'
                               : _getTotalRemainingFormatted(),
                           style: GoogleFonts.chakraPetch(
-                            fontSize: 32 * AppTypography.currentScale.activeDigitsScale,
+                            fontSize: (isCompactHeight ? 26 : 32) * AppTypography.currentScale.activeDigitsScale,
                             fontWeight: FontWeight.w800,
                             color: isLight ? const Color(0xFF0A0F1D) : Colors.white,
                             letterSpacing: 2.5,
@@ -645,15 +626,7 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                           ),
                         ),
 
-                        const SizedBox(height: 14),
 
-                        // 3. Фиксированная кнопка Воспроизведение / Пауза (всегда доступна под таймером)
-                        SizedBox(
-                          height: 52,
-                          child: Center(
-                            child: _buildYouTubePlayButton(activeColor),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -740,6 +713,10 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                 ],
               ),
             ),
+          );
+        },
+      ),
+    ),
           ],
         ),
       ),
@@ -841,30 +818,6 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                                   letterSpacing: 1.2,
                                 ),
                               ),
-                              const Spacer(),
-                              if (widget.workout.exercises.isNotEmpty)
-                                Tooltip(
-                                  message: 'Заменить упражнение',
-                                  child: InkWell(
-                                    onTap: () => _openSmartSwapSheet(context),
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: activeColor.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: activeColor.withValues(alpha: 0.4),
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.swap_horiz_rounded,
-                                        size: 16,
-                                        color: activeColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -886,7 +839,7 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                                   ),
                                 ],
                               ),
-                              maxLines: 2,
+                              maxLines: 3,
                             ),
                           ),
                           if (nextTitle != null) ...[
@@ -1074,8 +1027,6 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildYouTubePlayButton(activeColor),
-                        const SizedBox(width: 14),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF8B5CF6),
@@ -1104,9 +1055,7 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
                           tooltip: 'Предыдущий раунд',
                           onTap: widget.onSkipPrevious,
                         ),
-                        const SizedBox(width: 14),
-                        _buildYouTubePlayButton(activeColor),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 20),
                         _buildControlCircleButton(
                           icon: Icons.skip_next_rounded,
                           tooltip: 'Следующий раунд',
@@ -1166,6 +1115,7 @@ class _NeonTimerViewState extends State<NeonTimerView> with SingleTickerProvider
     );
   }
 
+  // ignore: unused_element
   Widget _buildYouTubePlayButton(Color badgeColor) {
     final isFinished = widget.state.phase == TimerPhase.finished;
     final isLight = widget.theme.isLight;

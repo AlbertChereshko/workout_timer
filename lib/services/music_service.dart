@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/theme.dart';
@@ -15,6 +17,8 @@ class MusicService {
   static const String ytMusicPackage = 'com.google.android.apps.youtube.music';
   static const String ytMusicUri = 'youtubemusic:';
   static const String ytMusicWebUrl = 'https://music.youtube.com';
+
+  static const String libreTubePackage = 'com.github.libretube';
 
   /// Запуск Spotify напрямую в установленное нативное приложение (без посредников)
   static Future<bool> openSpotify() async {
@@ -81,6 +85,48 @@ class MusicService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Выбор и открытие любого локального аудиофайла на устройстве через проводник
+  static Future<bool> pickAndOpenAudioFile(BuildContext context) async {
+    HapticFeedback.mediumImpact();
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'opus'],
+      );
+      if (result != null && result.files.single.path != null) {
+        final path = result.files.single.path!;
+        final openRes = await OpenFilex.open(path, type: 'audio/*');
+        return openRes.type == ResultType.done;
+      }
+    } catch (e) {
+      debugPrint('Error picking or opening audio file: $e');
+    }
+    return false;
+  }
+
+  /// Запуск стандартного музыкального плеера телефона
+  static Future<bool> openPhoneMusicPlayer() async {
+    HapticFeedback.mediumImpact();
+    try {
+      final bool? launched = await _appLauncherChannel.invokeMethod<bool>('launchMusicPlayer');
+      if (launched == true) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  /// Запуск приложения LibreTube
+  static Future<bool> openLibreTube() async {
+    HapticFeedback.mediumImpact();
+    try {
+      final bool? launched = await _appLauncherChannel.invokeMethod<bool>(
+        'launchApp',
+        {'package': libreTubePackage},
+      );
+      if (launched == true) return true;
+    } catch (_) {}
+    return false;
   }
 
   /// Показ всплывающей панели выбора музыки (в стиле Waze)
@@ -168,6 +214,36 @@ class MusicService {
               ],
             ),
             const SizedBox(height: 20),
+
+            // Кнопка: Аудиофайл на телефоне (поиск и выбор через проводник)
+            _buildMusicAppButton(
+              context: ctx,
+              title: 'Аудиофайл на телефоне',
+              subtitle: 'Поиск и открытие трека (MP3, M4A, FLAC...)',
+              iconColor: const Color(0xFF3B82F6),
+              icon: Icons.audio_file_rounded,
+              isLight: isLight,
+              onTap: () {
+                Navigator.pop(ctx);
+                pickAndOpenAudioFile(context);
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Кнопка: LibreTube
+            _buildMusicAppButton(
+              context: ctx,
+              title: 'LibreTube',
+              subtitle: 'Фоновое воспроизведение и плейлисты',
+              iconColor: const Color(0xFFE11D48),
+              icon: Icons.play_circle_fill_rounded,
+              isLight: isLight,
+              onTap: () {
+                Navigator.pop(ctx);
+                openLibreTube();
+              },
+            ),
+            const SizedBox(height: 12),
 
             // Кнопка Spotify
             _buildMusicAppButton(

@@ -28,13 +28,14 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       ..note = fields[8] as String?
       ..tags = (fields[9] as List).cast<String>()
       ..exerciseSnapshots = fields[10] != null ? (fields[10] as List).cast<String>() : <String>[]
-      ..extraReps = (fields[11] as int?) ?? 0;
+      ..extraReps = (fields[11] as int?) ?? 0
+      ..rpe = fields[12] as int?;
   }
 
   @override
   void write(BinaryWriter writer, WorkoutSession obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.workoutId)
       ..writeByte(1)
@@ -58,7 +59,9 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       ..writeByte(10)
       ..write(obj.exerciseSnapshots)
       ..writeByte(11)
-      ..write(obj.extraReps);
+      ..write(obj.extraReps)
+      ..writeByte(12)
+      ..write(obj.rpe);
   }
 
   @override

@@ -26,6 +26,7 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
   bool _onlyStatic = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _tagsScrollController = ScrollController();
   bool _isTagsExpanded = false;
   final Set<String> _selectedIds = <String>{};
 
@@ -65,6 +66,7 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _tagsScrollController.dispose();
     super.dispose();
   }
 
@@ -325,20 +327,51 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
       if (_selectedGroup != null && e.targetMuscle != _selectedGroup) {
         return false;
       }
-      if ((_onlyStatic || _selectedTag == 'Статика') && !e.isStatic && !e.tags.contains('Статика')) {
+      if ((_onlyStatic || _selectedTag == 'Статика') && !e.isStatic && !e.tags.any((t) => TagsRepository.capitalize(t) == 'Статика')) {
         return false;
       }
-      if (_selectedTag != null && _selectedTag != 'Статика') {
-        if (_selectedTag == 'Свой вес') {
-          final isBw = e.equipment == ExerciseEquipment.bodyweight || e.tags.contains('Свой вес');
+      if (_selectedTag != null && _selectedTag != 'Все' && _selectedTag != 'Статика') {
+        final normSel = TagsRepository.capitalize(_selectedTag!);
+        if (normSel == 'Верх') {
+          final matches = e.targetMuscle == MuscleGroup.upperBody ||
+              e.tags.any((t) {
+                final ct = TagsRepository.capitalize(t);
+                return ct == 'Верх' || ct == 'Верх тела';
+              });
+          if (!matches) return false;
+        } else if (normSel == 'Низ') {
+          final matches = e.targetMuscle == MuscleGroup.lowerBody ||
+              e.tags.any((t) {
+                final ct = TagsRepository.capitalize(t);
+                return ct == 'Низ' || ct == 'Низ тела';
+              });
+          if (!matches) return false;
+        } else if (normSel == 'Кор') {
+          final matches = e.targetMuscle == MuscleGroup.coreStatic ||
+              e.tags.any((t) => TagsRepository.capitalize(t) == 'Кор');
+          if (!matches) return false;
+        } else if (normSel == 'ВИТ') {
+          final matches = e.targetMuscle == MuscleGroup.metabolicFullBody ||
+              e.tags.any((t) {
+                final ct = TagsRepository.capitalize(t);
+                return ct == 'ВИТ' || ct == 'Full Body';
+              });
+          if (!matches) return false;
+        } else if (normSel == 'Свой вес') {
+          final isBw = e.equipment == ExerciseEquipment.bodyweight ||
+              e.tags.any((t) => TagsRepository.capitalize(t) == 'Свой вес');
           if (!isBw) return false;
-        } else if (_selectedTag == 'Резинки' || _selectedTag == 'Резинка') {
+        } else if (normSel == 'Резинка') {
           final isBand = e.equipment == ExerciseEquipment.resistanceBand ||
               e.tags.any((t) => t.toLowerCase().contains('резин')) ||
               e.name.toLowerCase().contains('резин') ||
               e.description.toLowerCase().contains('резин');
           if (!isBand) return false;
-        } else if (!e.tags.contains(_selectedTag)) {
+        } else if (normSel == '16 кг' || normSel == '6 кг') {
+          final matches = e.tags.any((t) => t.toLowerCase().contains(normSel.toLowerCase())) ||
+              e.name.toLowerCase().contains(normSel.toLowerCase());
+          if (!matches) return false;
+        } else if (!e.tags.any((t) => TagsRepository.capitalize(t) == normSel)) {
           return false;
         }
       }
@@ -362,72 +395,75 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
             // Top App Bar
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'База',
-                    style: TextStyle(
-                      color: theme.textPrimary,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${allExercises.length} упр. • База для AI и комплексов',
-                    style: TextStyle(
-                      color: theme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Spacer(),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.accent,
-                          foregroundColor: theme.accent.computeLuminance() > 0.5 ? Colors.black87 : Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        onPressed: () => _openExerciseDialog(),
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Добавить', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
-                      ),
-                      const SizedBox(width: 4),
-                      PopupMenuButton<String>(
-                        tooltip: 'Управление базой',
-                        icon: Icon(Icons.more_vert, color: theme.textSecondary, size: 20),
-                        color: theme.surface,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        onSelected: (val) {
-                          if (val == 'export') {
-                            _exportExercises();
-                          } else if (val == 'import') {
-                            _openBulkImportDialog(theme);
-                          } else if (val == 'clear_all') {
-                            _confirmClearAllExercises(theme);
-                          } else if (val == 'restore_default') {
-                            _confirmRestoreDefaultCatalog(theme);
-                          }
-                        },
-                        itemBuilder: (ctx) => [
-                          PopupMenuItem(
-                            value: 'export',
-                            child: Row(
-                              children: [
-                                Icon(Icons.share_outlined, size: 18, color: theme.accent),
-                                const SizedBox(width: 10),
-                                Text('Экспорт', style: TextStyle(color: theme.textPrimary, fontSize: 13)),
-                              ],
-                            ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'База',
+                          style: TextStyle(
+                            color: theme.textPrimary,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.4,
                           ),
-                          PopupMenuItem(
-                            value: 'import',
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${allExercises.length} упр. • База для AI и комплексов',
+                          style: TextStyle(
+                            color: theme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Управление базой',
+                    icon: Icon(Icons.more_vert, color: theme.textSecondary, size: 22),
+                    color: theme.surface,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    onSelected: (val) {
+                      if (val == 'add') {
+                        _openExerciseDialog();
+                      } else if (val == 'export') {
+                        _exportExercises();
+                      } else if (val == 'import') {
+                        _openBulkImportDialog(theme);
+                      } else if (val == 'clear_all') {
+                        _confirmClearAllExercises(theme);
+                      } else if (val == 'restore_default') {
+                        _confirmRestoreDefaultCatalog(theme);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'add',
+                        child: Row(
+                          children: [
+                            Icon(Icons.add_circle_outline_rounded, size: 18, color: theme.accent),
+                            const SizedBox(width: 10),
+                            Text('Добавить упражнение', style: TextStyle(color: theme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'export',
+                        child: Row(
+                          children: [
+                            Icon(Icons.share_outlined, size: 18, color: theme.accent),
+                            const SizedBox(width: 10),
+                            Text('Экспорт', style: TextStyle(color: theme.textPrimary, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'import',
                             child: Row(
                               children: [
                                 Icon(Icons.file_upload_outlined, size: 18, color: theme.accent),
@@ -462,9 +498,7 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                ),
 
             // Search Bar
             Padding(
@@ -830,9 +864,44 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
   }
 
   Widget _buildExpandableTags(AppThemeConfig theme, List<String> allTags) {
-    final customTags = allTags
-        .where((t) => !['Верх', 'Низ', 'Кор', 'Статика', 'ВИТ', 'Full Body', 'Верх тела', 'Низ тела', 'Кор и Статика', 'Только статика'].contains(t))
-        .toList();
+    final orderedBase = [
+      'Статика',
+      'Верх',
+      'Низ',
+      'Кор',
+      'ВИТ',
+      'Свой вес',
+      'Резинка',
+      '16 кг',
+      '6 кг',
+      'Гимнастика',
+      'Лимфа',
+    ];
+
+    final Set<String> tagSet = {};
+    final List<String> displayTags = [];
+
+    for (final t in orderedBase) {
+      final cap = TagsRepository.capitalize(t);
+      if (tagSet.add(cap)) {
+        displayTags.add(cap);
+      }
+    }
+
+    for (final t in allTags) {
+      final cap = TagsRepository.capitalize(t);
+      if (cap == 'Верх тела' ||
+          cap == 'Низ тела' ||
+          cap == 'Резинки' ||
+          cap == 'Кор и статика' ||
+          cap == 'Кор и Статика' ||
+          cap == 'Только статика') {
+        continue;
+      }
+      if (tagSet.add(cap)) {
+        displayTags.add(cap);
+      }
+    }
 
     final chips = <Widget>[
       _buildChip(
@@ -845,67 +914,21 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
         }),
         theme: theme,
       ),
-      _buildChip(
-        label: 'Статика',
-        isSelected: _selectedTag == 'Статика' || _onlyStatic,
-        onTap: () => setState(() {
-          if (_selectedTag == 'Статика' || _onlyStatic) {
-            _onlyStatic = false;
-            _selectedTag = null;
-          } else {
-            _onlyStatic = true;
-            _selectedTag = 'Статика';
-            _selectedGroup = null;
-          }
-        }),
-        onLongPress: () => _showManageTagDialog('Статика', theme),
-        onSecondaryTap: () => _showManageTagDialog('Статика', theme),
-        theme: theme,
-      ),
-      ...MuscleGroup.values.map((mg) {
-        final isSel = _selectedGroup == mg;
-        return _buildChip(
-          label: mg.displayName,
-          isSelected: isSel,
-          onTap: () => setState(() {
-            _selectedGroup = isSel ? null : mg;
-            _selectedTag = null;
-            _onlyStatic = false;
-          }),
-          onLongPress: () => _showManageTagDialog(mg.displayName, theme),
-          onSecondaryTap: () => _showManageTagDialog(mg.displayName, theme),
-          theme: theme,
-        );
-      }),
-      _buildChip(
-        label: 'Свой вес',
-        isSelected: _selectedTag == 'Свой вес',
-        onTap: () => setState(() {
-          _selectedTag = _selectedTag == 'Свой вес' ? null : 'Свой вес';
-          _selectedGroup = null;
-          _onlyStatic = false;
-        }),
-        theme: theme,
-      ),
-      _buildChip(
-        label: 'Резинки',
-        isSelected: _selectedTag == 'Резинки' || _selectedTag == 'Резинка',
-        onTap: () => setState(() {
-          _selectedTag = (_selectedTag == 'Резинки' || _selectedTag == 'Резинка') ? null : 'Резинки';
-          _selectedGroup = null;
-          _onlyStatic = false;
-        }),
-        theme: theme,
-      ),
-      ...customTags.map((tag) {
-        final isSel = _selectedTag == tag;
+      ...displayTags.map((tag) {
+        final isSel = (_selectedTag == tag) || (tag == 'Статика' && _onlyStatic);
         return _buildChip(
           label: tag,
           isSelected: isSel,
           onTap: () => setState(() {
-            _selectedTag = isSel ? null : tag;
-            _selectedGroup = null;
-            _onlyStatic = false;
+            if (isSel) {
+              _selectedTag = null;
+              _onlyStatic = false;
+              _selectedGroup = null;
+            } else {
+              _selectedTag = tag;
+              _onlyStatic = (tag == 'Статика');
+              _selectedGroup = null;
+            }
           }),
           onLongPress: () => _showManageTagDialog(tag, theme),
           onSecondaryTap: () => _showManageTagDialog(tag, theme),
@@ -959,7 +982,7 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
             ),
           ),
           child: Icon(
-            isExpanded ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
+            isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
             size: 20,
             color: isExpanded ? theme.accent : theme.textPrimary,
           ),
@@ -967,18 +990,28 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth - 32;
-        const toggleWidth = 42.0;
-
-        if (_isTagsExpanded) {
-          return AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+    if (_isTagsExpanded) {
+      return AnimatedSize(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        alignment: Alignment.topCenter,
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 280),
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: theme.surface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: theme.cardBorder.withValues(alpha: 0.5)),
+          ),
+          child: Scrollbar(
+            controller: _tagsScrollController,
+            thumbVisibility: true,
+            thickness: 5,
+            radius: const Radius.circular(8),
+            child: SingleChildScrollView(
+              controller: _tagsScrollController,
+              padding: const EdgeInsets.all(10),
+              physics: const BouncingScrollPhysics(),
               child: Wrap(
                 spacing: 6,
                 runSpacing: 8,
@@ -989,64 +1022,36 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
                 ],
               ),
             ),
-          );
-        }
-
-        final labels = [
-          'Все',
-          'Статика',
-          ...MuscleGroup.values.map((mg) => mg.displayName),
-          ...customTags,
-          '+ Тег',
-        ];
-
-        double currentWidth = 0;
-        final visibleChips = <Widget>[];
-
-        for (int i = 0; i < chips.length; i++) {
-          final label = i < labels.length ? labels[i] : '';
-          final textPainter = TextPainter(
-            text: TextSpan(
-              text: label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-            textDirection: TextDirection.ltr,
-          )..layout();
-          final chipW = textPainter.width + 24 + 6;
-
-          if (currentWidth + chipW + toggleWidth <= availableWidth) {
-            visibleChips.add(chips[i]);
-            currentWidth += chipW;
-          } else {
-            break;
-          }
-        }
-
-        if (visibleChips.isEmpty && chips.isNotEmpty) {
-          visibleChips.add(chips.first);
-        }
-
-        final hasOverflow = chips.length > visibleChips.length;
-
-        return AnimatedSize(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                ...visibleChips.map((c) => Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: c,
-                    )),
-                const Spacer(),
-                if (hasOverflow) buildToggle(false),
-              ],
-            ),
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: chips.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 6),
+                  itemBuilder: (_, i) => chips[i],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            buildToggle(false),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2424,6 +2429,62 @@ class _BulkImportDialogState extends State<_BulkImportDialog> {
     }
   }
 
+  void _copyAiExercisePrompt() {
+    HapticFeedback.lightImpact();
+    const promptText = '''
+Ты профессиональный методист и тренер по фитнесу.
+Сформируй список упражнений для мобильного приложения "Workout Timer" в строгом формате JSON:
+
+```json
+[
+  {
+    "name": "Название упражнения",
+    "description": "Краткая правильная биомеханика и техника выполнения",
+    "targetMuscle": "upperBody",
+    "subgroup": "chest",
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 12,
+    "tags": ["Верх", "Свой вес"]
+  }
+]
+```
+
+СПРАВОЧНИК ПОЛЕЙ И ДОПУСТИМЫХ ЗНАЧЕНИЙ:
+1. targetMuscle (основная мышечная группа):
+   - "upperBody" (Верх тела)
+   - "lowerBody" (Низ тела)
+   - "coreStatic" (Кор и статика)
+   - "metabolicFullBody" (ВИТ / Всё тело)
+2. subgroup (анатомическая подгруппа, опционально):
+   - Для upperBody: "chest", "back", "shoulders", "biceps", "triceps", "forearms"
+   - Для lowerBody: "quadriceps", "hamstrings", "glutes", "calves"
+   - Для coreStatic: "abs", "obliques", "lowerBack", "posture"
+   - Для metabolicFullBody: "hiitFull", "agilityPlyo", "cardioConditioning"
+3. equipment (инвентарь):
+   - "bodyweight" (Свой вес)
+   - "kettlebell" (Гиря: если гиря, укажи 16 кг или 6 кг в названии/описании)
+   - "resistanceBand" (Резинка)
+   - "dumbbells" (Гантели)
+   - "pullUpBar" (Турник)
+4. difficulty: "beginner", "intermediate", "advanced"
+5. isStatic: true для статических упражнений (планка, стульчик), false для динамических.
+6. tags (выбирай из стандартизированных тегов):
+   "Верх", "Низ", "Кор", "Full Body", "Статика", "ВИТ", "Свой вес", "Резинка", "Гимнастика", "Лимфа", "16 кг", "6 кг"
+''';
+
+    Clipboard.setData(const ClipboardData(text: promptText));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Промпт для ИИ скопирован в буфер обмена!'),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
@@ -2471,7 +2532,7 @@ class _BulkImportDialogState extends State<_BulkImportDialog> {
                 maxLines: 7,
                 style: TextStyle(color: theme.textPrimary, fontSize: 12, fontFamily: 'monospace'),
                 decoration: InputDecoration(
-                  hintText: '[\n  {\n    "name": "Отжимания",\n    "targetMuscle": "chest",\n    "subgroup": "chest",\n    "videoUrl": "https://..."\n  }\n]',
+                  hintText: '[\n  {\n    "name": "Отжимания",\n    "targetMuscle": "upperBody",\n    "subgroup": "chest",\n    "equipment": "bodyweight",\n    "tags": ["Верх", "Свой вес"]\n  }\n]',
                   hintStyle: TextStyle(color: theme.textSecondary.withValues(alpha: 0.4)),
                   filled: true,
                   fillColor: theme.surfaceSubtle,
@@ -2479,14 +2540,36 @@ class _BulkImportDialogState extends State<_BulkImportDialog> {
                 ),
               ),
               const SizedBox(height: 10),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: theme.textPrimary,
-                  side: BorderSide(color: theme.cardBorder),
-                ),
-                onPressed: _pickFile,
-                icon: const Icon(Icons.folder_open, size: 16),
-                label: const Text('Выбрать файл (.json)'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.textPrimary,
+                        side: BorderSide(color: theme.cardBorder),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
+                      onPressed: _pickFile,
+                      icon: const Icon(Icons.folder_open, size: 16),
+                      label: const FittedBox(fit: BoxFit.scaleDown, child: Text('Выбрать файл')),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.accent.withValues(alpha: 0.15),
+                        foregroundColor: theme.accent,
+                        elevation: 0,
+                        side: BorderSide(color: theme.accent),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
+                      onPressed: _copyAiExercisePrompt,
+                      icon: const Icon(Icons.auto_awesome, size: 16),
+                      label: const FittedBox(fit: BoxFit.scaleDown, child: Text('Промпт для ИИ')),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               // Import Mode Toggle

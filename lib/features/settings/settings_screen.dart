@@ -4,13 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/locale_provider.dart';
 import '../../data/repositories/exercise_repository.dart';
 import '../workout_list/workout_list_screen.dart';
 import '../history/history_screen.dart';
 import '../../core/theme.dart';
-import '../../core/typography_scale_provider.dart';
 import '../../services/audio_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloud_sync_service.dart';
@@ -26,41 +24,12 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late SoundMode _soundMode;
-  bool _isTypographyExpanded = false;
 
   @override
   void initState() {
     super.initState();
     final audio = AudioService();
     _soundMode = audio.soundMode;
-  }
-
-  String _getTypographyScaleSubtitle(TypographyScaleConfig scale) {
-    if ((scale.timerScale - 0.85).abs() < 0.01 &&
-        (scale.activeDigitsScale - 0.85).abs() < 0.01 &&
-        (scale.headingScale - 0.85).abs() < 0.01 &&
-        (scale.bodyScale - 0.85).abs() < 0.01) {
-      return 'Компактный (85%)';
-    }
-    if ((scale.timerScale - 1.0).abs() < 0.01 &&
-        (scale.activeDigitsScale - 1.0).abs() < 0.01 &&
-        (scale.headingScale - 1.0).abs() < 0.01 &&
-        (scale.bodyScale - 1.0).abs() < 0.01) {
-      return 'Стандартный (100%)';
-    }
-    if ((scale.timerScale - 1.15).abs() < 0.01 &&
-        (scale.activeDigitsScale - 1.15).abs() < 0.01 &&
-        (scale.headingScale - 1.15).abs() < 0.01 &&
-        (scale.bodyScale - 1.15).abs() < 0.01) {
-      return 'Крупный (115%)';
-    }
-    if ((scale.timerScale - 1.30).abs() < 0.01 &&
-        (scale.activeDigitsScale - 1.30).abs() < 0.01 &&
-        (scale.headingScale - 1.30).abs() < 0.01 &&
-        (scale.bodyScale - 1.30).abs() < 0.01) {
-      return 'Максимум (130%)';
-    }
-    return 'Таймер: ${(scale.timerScale * 100).round()}% • Цифры: ${(scale.activeDigitsScale * 100).round()}% • Текст: ${(scale.bodyScale * 100).round()}%';
   }
 
   String _getLanguageName(String code) {
@@ -113,114 +82,120 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: currentTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: currentTheme.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...options.map((option) {
-                  final isSelected = currentSelectedId == option.id;
-                  return ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    tileColor: isSelected
-                        ? currentTheme.accent.withValues(alpha: 0.15)
-                        : Colors.transparent,
-                    title: Text(
-                      option.name,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Text(
+                      title,
                       style: TextStyle(
                         color: currentTheme.textPrimary,
-                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...options.map((option) {
+                    final isSelected = currentSelectedId == option.id;
+                    return ListTile(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      tileColor: isSelected
+                          ? currentTheme.accent.withValues(alpha: 0.15)
+                          : Colors.transparent,
+                      title: Text(
+                        option.name,
+                        style: TextStyle(
+                          color: currentTheme.textPrimary,
+                          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
+                          fontSize: 15,
+                        ),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.play_circle_fill, color: currentTheme.accent),
+                            tooltip: 'Прослушать',
+                            onPressed: () {
+                              AudioService().testSound(option.asset);
+                            },
+                          ),
+                          if (isSelected)
+                            Icon(Icons.check, color: currentTheme.accent)
+                          else
+                            const SizedBox(width: 24),
+                        ],
+                      ),
+                      onTap: () {
+                        AudioService().setEventSound(eventKey, option.id);
+                        AudioService().testSound(option.asset);
+                        setState(() {});
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  }),
+                  const Divider(height: 24),
+                  ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    tileColor: currentTheme.accent.withValues(alpha: 0.08),
+                    leading: Icon(Icons.audio_file_rounded, color: currentTheme.accent, size: 28),
+                    title: Text(
+                      'Выбрать свой звук с устройства...',
+                      style: TextStyle(
+                        color: currentTheme.textPrimary,
+                        fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.play_circle_fill, color: currentTheme.accent),
-                          tooltip: 'Прослушать',
-                          onPressed: () {
-                            AudioService().testSound(option.asset);
-                          },
-                        ),
-                        if (isSelected)
-                          Icon(Icons.check, color: currentTheme.accent)
-                        else
-                          const SizedBox(width: 24),
-                      ],
+                    subtitle: Text(
+                      'mp3, wav, ogg, aac из памяти телефона',
+                      style: TextStyle(color: currentTheme.textSecondary, fontSize: 12),
                     ),
-                    onTap: () {
-                      AudioService().setEventSound(eventKey, option.id);
-                      AudioService().testSound(option.asset);
-                      setState(() {});
+                    trailing: Icon(Icons.folder_open_rounded, color: currentTheme.accent),
+                    onTap: () async {
                       Navigator.pop(ctx);
-                    },
-                  );
-                }),
-                const Divider(height: 24),
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  tileColor: currentTheme.accent.withValues(alpha: 0.08),
-                  leading: Icon(Icons.audio_file_rounded, color: currentTheme.accent, size: 28),
-                  title: Text(
-                    'Выбрать свой звук с устройства...',
-                    style: TextStyle(
-                      color: currentTheme.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'mp3, wav, ogg, aac из памяти телефона',
-                    style: TextStyle(color: currentTheme.textSecondary, fontSize: 12),
-                  ),
-                  trailing: Icon(Icons.folder_open_rounded, color: currentTheme.accent),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    final result = await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['wav', 'mp3', 'ogg', 'aac', 'm4a'],
-                    );
-                    if (result != null && result.files.single.path != null) {
-                      final path = result.files.single.path!;
-                      final customId = 'custom:$path';
-                      AudioService().setEventSound(eventKey, customId);
-                      AudioService().testSound(customId);
-                      setState(() {});
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: currentTheme.surface,
-                            content: Text(
-                              'Выбран звук: ${result.files.single.name}',
-                              style: TextStyle(color: currentTheme.textPrimary),
+                      final result = await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['wav', 'mp3', 'ogg', 'aac', 'm4a'],
+                      );
+                      if (result != null && result.files.single.path != null) {
+                        final path = result.files.single.path!;
+                        final customId = 'custom:$path';
+                        AudioService().setEventSound(eventKey, customId);
+                        AudioService().testSound(customId);
+                        setState(() {});
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: currentTheme.surface,
+                              content: Text(
+                                'Выбран звук: ${result.files.single.name}',
+                                style: TextStyle(color: currentTheme.textPrimary),
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       }
-                    }
-                  },
-                ),
-              ],
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -469,8 +444,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final currentTheme = ref.watch(appThemeProvider);
     final currentLocale = ref.watch(localeProvider);
-    final typoScale = ref.watch(typographyScaleProvider);
-    final typoNotifier = ref.read(typographyScaleProvider.notifier);
     final l10n = AppLocalizations.of(context);
     final audio = AudioService();
 
@@ -607,12 +580,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           finishOption,
                           l10n,
                         ),
-                      ),
-
-                      // 7. Typography & Scaling Card (full width on wide screens)
-                      SizedBox(
-                        width: isWide ? availableWidth : cardWidth,
-                        child: _buildTypographyScaleSection(currentTheme, typoScale, typoNotifier),
                       ),
                     ],
                   ),
@@ -1398,13 +1365,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           children: [
                             Expanded(
                               child: _buildSoundSchemeButton(
-                                title: '🕰 Часы',
-                                subtitle: 'Тиканье, Бой',
-                                isSelected: audio.countdownSound == 'clock_tick' && audio.restSound == 'clock_gong',
+                                title: '🎮 АРКАДА',
+                                subtitle: 'Пинбол, Панч',
+                                isSelected: audio.countdownSound == 'arcade_tick' && audio.startSound == 'arcade_start',
                                 theme: currentTheme,
                                 onTap: () {
-                                  audio.applySoundScheme('vintage_clock');
-                                  audio.testSound('sounds/clock_gong.wav');
+                                  audio.applySoundScheme('arcade');
+                                  audio.testSound('sounds/arcade_start.wav');
                                   setState(() {});
                                 },
                               ),
@@ -1413,12 +1380,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             Expanded(
                               child: _buildSoundSchemeButton(
                                 title: '🥊 Спорт',
-                                subtitle: 'Бип, Свисток',
-                                isSelected: audio.countdownSound == 'beep' && audio.startSound == 'whistle',
+                                subtitle: 'Бип, Свист',
+                                isSelected: audio.countdownSound == 'beep' && (audio.startSound == 'arrow_start' || audio.startSound == 'whistle'),
                                 theme: currentTheme,
                                 onTap: () {
                                   audio.applySoundScheme('classic_sport');
-                                  audio.testSound('sounds/whistle_start.wav');
+                                  audio.testSound('sounds/arrow_start.wav');
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSoundSchemeButton(
+                                title: '🕰 Часы',
+                                subtitle: 'Тиканье, Бой',
+                                isSelected: audio.countdownSound == 'clock_tick' && audio.restSound == 'clock_gong',
+                                theme: currentTheme,
+                                onTap: () {
+                                  audio.applySoundScheme('vintage_clock');
+                                  audio.testSound('sounds/clock_gong.wav');
                                   setState(() {});
                                 },
                               ),
@@ -1522,6 +1507,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       currentTheme: currentTheme,
                     ),
                   ),
+                  const Divider(height: 24),
+                  SwitchListTile(
+                    value: audio.isMetronomeEnabled,
+                    activeColor: currentTheme.accent,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Метроном / тиканье каждую секунду',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: currentTheme.textPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Воспроизводит лёгкий такт во время работы (не прерывает музыку)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: currentTheme.textSecondary,
+                      ),
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        audio.setMetronomeEnabled(val);
+                      });
+                      if (val) {
+                        audio.playMetronomeTick();
+                      }
+                    },
+                  ),
+                  if (audio.isMetronomeEnabled)
+                    _buildEventSoundTile(
+                      title: 'Звук тиканья метронома',
+                      selectedName: AudioService.metronomeOptions.firstWhere(
+                        (o) => o.id == audio.metronomeSound,
+                        orElse: () => AudioService.metronomeOptions.first,
+                      ).name,
+                      icon: Icons.timer_outlined,
+                      theme: currentTheme,
+                      onTap: () => _showEventSoundPicker(
+                        context: context,
+                        title: 'Звук метронома',
+                        eventKey: 'metronome',
+                        options: AudioService.metronomeOptions,
+                        currentSelectedId: audio.metronomeSound,
+                        currentTheme: currentTheme,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -2183,379 +2215,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
 
-
-  Widget _buildTypographyScaleSection(
-    AppThemeConfig currentTheme,
-    TypographyScaleConfig typoScale,
-    TypographyScaleNotifier typoNotifier,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: currentTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: currentTheme.cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: currentTheme.accent.withValues(alpha: currentTheme.isLight ? 0.05 : 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Collapsible Header Tile
-          InkWell(
-            onTap: () {
-              setState(() {
-                _isTypographyExpanded = !_isTypographyExpanded;
-              });
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: currentTheme.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.format_size_rounded, color: currentTheme.accent, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Размер шрифтов и масштаб',
-                          style: TextStyle(
-                            color: currentTheme.textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _getTypographyScaleSubtitle(typoScale),
-                          style: TextStyle(
-                            color: currentTheme.accent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: _isTypographyExpanded ? 0.5 : 0.0,
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    child: Icon(Icons.keyboard_arrow_down, color: currentTheme.accent, size: 26),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Expanded Content
-          AnimatedCrossFade(
-            firstChild: const SizedBox(width: double.infinity, height: 0),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Divider(color: currentTheme.cardBorder, height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Точная настройка элементов:',
-                        style: TextStyle(
-                          color: currentTheme.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        onPressed: () => typoNotifier.resetToDefaults(),
-                        icon: Icon(Icons.restore_rounded, size: 16, color: currentTheme.accent),
-                        label: Text('Сброс (100%)', style: TextStyle(color: currentTheme.accent, fontSize: 12)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-
-                  // 1. Таймеры
-                  _buildScaleSliderRow(
-                    title: 'Таймеры (обратный отсчет)',
-                    subtitle: 'Большие цифры на главном экране тренировки',
-                    value: typoScale.timerScale,
-                    accent: currentTheme.accent,
-                    currentTheme: currentTheme,
-                    onChanged: (val) => typoNotifier.setTimerScale(val),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 2. Активные цифры
-                  _buildScaleSliderRow(
-                    title: 'Активные цифры и счетчики',
-                    subtitle: 'Счетчики раундов, общее время, повторения',
-                    value: typoScale.activeDigitsScale,
-                    accent: currentTheme.accent,
-                    currentTheme: currentTheme,
-                    onChanged: (val) => typoNotifier.setActiveDigitsScale(val),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 3. Заголовки
-                  _buildScaleSliderRow(
-                    title: 'Заголовки и названия',
-                    subtitle: 'Названия упражнений, фаз тренировки и экранов',
-                    value: typoScale.headingScale,
-                    accent: currentTheme.accent,
-                    currentTheme: currentTheme,
-                    onChanged: (val) => typoNotifier.setHeadingScale(val),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 4. Основной текст
-                  _buildScaleSliderRow(
-                    title: 'Основной текст и кнопки',
-                    subtitle: 'Подписи, описания, списки и текст кнопок',
-                    value: typoScale.bodyScale,
-                    accent: currentTheme.accent,
-                    currentTheme: currentTheme,
-                    onChanged: (val) => typoNotifier.setBodyScale(val),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Быстрые пресеты
-                  Text(
-                    'БЫСТРЫЕ ПРЕСЕТЫ:',
-                    style: TextStyle(
-                      color: currentTheme.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: TypographyPreset.values.map((preset) {
-                      final isSelected = (typoScale.timerScale == preset.scale &&
-                          typoScale.activeDigitsScale == preset.scale &&
-                          typoScale.headingScale == preset.scale &&
-                          typoScale.bodyScale == preset.scale);
-                      return InkWell(
-                        onTap: () => typoNotifier.setPreset(preset),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? currentTheme.accent.withValues(alpha: 0.2)
-                                : currentTheme.background,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected ? currentTheme.accent : currentTheme.cardBorder,
-                              width: isSelected ? 1.5 : 1.0,
-                            ),
-                          ),
-                          child: Text(
-                            preset.label,
-                            style: TextStyle(
-                              color: isSelected ? currentTheme.accent : currentTheme.textPrimary,
-                              fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Live Preview Card
-                  Text(
-                    'ЖИВОЙ ПРЕДПРОСМОТР (LIVE PREVIEW):',
-                    style: TextStyle(
-                      color: currentTheme.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: currentTheme.background,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: currentTheme.cardBorder),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Заголовок
-                        Text(
-                          'РАУНД 1: ОТЖИМАНИЯ',
-                          style: GoogleFonts.inter(
-                            color: currentTheme.textPrimary,
-                            fontSize: 18 * typoScale.headingScale,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Таймер
-                            Text(
-                              '00:45',
-                              style: GoogleFonts.chakraPetch(
-                                color: currentTheme.accent,
-                                fontSize: 48 * typoScale.timerScale,
-                                fontWeight: FontWeight.w800,
-                                height: 1.0,
-                                fontFeatures: const [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                            // Кнопка
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: currentTheme.accent,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                'СТАРТ ▶',
-                                style: GoogleFonts.inter(
-                                  color: currentTheme.isLight ? Colors.white : Colors.white,
-                                  fontSize: 13 * typoScale.bodyScale,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Активные цифры
-                        Text(
-                          'РАУНД 3/8  •  ОСТАЛОСЬ 12:30',
-                          style: GoogleFonts.chakraPetch(
-                            color: const Color(0xFF10B981),
-                            fontSize: 13 * typoScale.activeDigitsScale,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Основной текст
-                        Text(
-                          'Интервальная тренировка высокой интенсивности для всего тела',
-                          style: GoogleFonts.inter(
-                            color: currentTheme.textSecondary,
-                            fontSize: 12 * typoScale.bodyScale,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            crossFadeState: _isTypographyExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScaleSliderRow({
-    required String title,
-    required String subtitle,
-    required double value,
-    required Color accent,
-    required AppThemeConfig currentTheme,
-    required ValueChanged<double> onChanged,
-  }) {
-    final percent = (value * 100).round();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  color: currentTheme.textPrimary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: accent.withValues(alpha: 0.4)),
-              ),
-              child: Text(
-                '$percent%',
-                style: TextStyle(
-                  color: accent,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-        Text(
-          subtitle,
-          style: TextStyle(color: currentTheme.textSecondary, fontSize: 11),
-        ),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: accent,
-            inactiveTrackColor: currentTheme.isLight ? Colors.black12 : Colors.white12,
-            thumbColor: accent,
-            overlayColor: accent.withValues(alpha: 0.2),
-            trackHeight: 3.5,
-          ),
-          child: Slider(
-            value: value,
-            min: 0.80,
-            max: 1.30,
-            divisions: 10,
-            onChanged: (val) {
-              final rounded = (val * 100).round() / 100.0;
-              onChanged(rounded);
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
   Future<void> _showImportBackupDialog(BuildContext context, AppThemeConfig currentTheme) async {
     final textController = TextEditingController();

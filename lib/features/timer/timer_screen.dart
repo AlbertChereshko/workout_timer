@@ -12,6 +12,7 @@ import 'animated_background.dart';
 import 'widgets/neon_timer_view.dart';
 import 'widgets/cosmic_timer_view.dart';
 import 'widgets/amrap_flow_timer_view.dart';
+import 'widgets/warmup_timer_view.dart';
 import 'widgets/neon_ambient_background.dart';
 import 'widgets/real_time_clock.dart';
 import '../../core/typography_scale_provider.dart';
@@ -21,13 +22,13 @@ import '../../services/music_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../data/models/athlete_profile.dart';
 import '../../services/calorie_calculator.dart';
-import 'widgets/ai_coach_feedback_card.dart';
 import 'widgets/volume_control_sheet.dart';
 
 class TimerScreen extends ConsumerStatefulWidget {
   final Workout workout;
+  final int warmupSeconds;
   
-  const TimerScreen({super.key, required this.workout});
+  const TimerScreen({super.key, required this.workout, this.warmupSeconds = 0});
 
   @override
   ConsumerState<TimerScreen> createState() => _TimerScreenState();
@@ -35,12 +36,15 @@ class TimerScreen extends ConsumerStatefulWidget {
 
 class _TimerScreenState extends ConsumerState<TimerScreen> {
   final _commentController = TextEditingController();
+  int? _selectedRpe;
+  int? _customAmrapRounds;
+  int? _customAmrapExtraReps;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(activeTimerProvider.notifier).loadWorkout(widget.workout);
+      ref.read(activeTimerProvider.notifier).loadWorkout(widget.workout, warmupSeconds: widget.warmupSeconds);
     });
   }
 
@@ -102,6 +106,26 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     
     if (state.phase == TimerPhase.finished) {
       return _buildSummaryScreen(context, ref, currentTheme, scaleConfig);
+    }
+
+    if (state.phase == TimerPhase.warmup) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            _confirmExit(context, currentTheme);
+          }
+        },
+        child: WarmupTimerView(
+          workout: widget.workout,
+          state: state,
+          theme: currentTheme,
+          onTogglePlayPause: () => ref.read(activeTimerProvider.notifier).toggle(),
+          onSkipWarmup: () => ref.read(activeTimerProvider.notifier).skipWarmup(),
+          onSkipExercise: () => ref.read(activeTimerProvider.notifier).skipWarmupExercise(),
+          onFinishEarly: () => _confirmExit(context, currentTheme),
+        ),
+      );
     }
     
     final progress = state.totalPhaseSeconds > 0 
@@ -335,8 +359,19 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                     isAmrap: isAmrap,
                     l10n: l10n,
                   )
-                : Column(
-              children: [
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final availableHeight = constraints.maxHeight;
+                      final isCompactHeight = availableHeight < 720;
+                      final targetCircle = availableHeight * 0.32;
+                      final circleSize = targetCircle.clamp(190.0, 256.0);
+                      final circleScale = circleSize / 256.0;
+
+                      return Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 580),
+                          child: Column(
+                            children: [
                 // Top control bar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -440,7 +475,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                           currentExercise.toUpperCase(),
                           style: AppTypography.exerciseTitle(
                             color: currentTheme.isLight ? const Color(0xFF0A0F1D) : currentTheme.textPrimary,
-                            fontSize: 28.0 * scaleConfig.headingScale,
+                            fontSize: (isCompactHeight ? 23.0 : 28.0) * scaleConfig.headingScale,
                             fontWeight: FontWeight.w900,
                             fontStyle: FontStyle.normal,
                           ),
@@ -464,8 +499,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                       alignment: Alignment.center,
                       children: [
                         SizedBox(
-                          width: 256,
-                          height: 256,
+                          width: circleSize,
+                          height: circleSize,
                           child: TweenAnimationBuilder<double>(
                             key: animationKey,
                             duration: state.isRunning ? const Duration(milliseconds: 1000) : Duration.zero,
@@ -474,7 +509,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                             builder: (context, value, _) {
                               return CircularProgressIndicator(
                                 value: value,
-                                strokeWidth: 13,
+                                strokeWidth: 13 * circleScale,
                                 backgroundColor: currentTheme.isLight
                                     ? const Color(0xFFE2E8F0)
                                     : currentTheme.cardBorder,
@@ -490,8 +525,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                               '${state.remainingSeconds}',
                               style: AppTypography.timerDisplay(
                                 color: currentTheme.isLight ? const Color(0xFF0A0F1D) : currentTheme.textPrimary,
-                                fontSize: 92 * scaleConfig.activeDigitsScale,
-                                letterSpacing: 4.0,
+                                fontSize: 92 * scaleConfig.activeDigitsScale * circleScale,
+                                letterSpacing: 4.0 * circleScale,
                               ),
                             ),
                           ],
@@ -507,12 +542,12 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Opacity(
-                    opacity: nextExerciseName.isNotEmpty ? 1.0 : 0.0,
+                    opacity: (nextExerciseName != null && nextExerciseName.isNotEmpty) ? 1.0 : 0.0,
                     child: Text(
-                      '↑ ${(nextExerciseName.isNotEmpty ? nextExerciseName : " ").toUpperCase()}',
+                      '↑ ${(nextExerciseName != null && nextExerciseName.isNotEmpty ? nextExerciseName : " ").toUpperCase()}',
                       style: AppTypography.exerciseTitle(
                         color: currentTheme.isLight ? const Color(0xFF0A0F1D) : currentTheme.textPrimary,
-                        fontSize: 24.0 * scaleConfig.bodyScale,
+                        fontSize: (isCompactHeight ? 20.0 : 24.0) * scaleConfig.bodyScale,
                         fontWeight: FontWeight.w800,
                         fontStyle: FontStyle.italic,
                       ),
@@ -708,6 +743,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                 ],
               ],
             ),
+          ),
+        );
+      },
+    ),
           ),
         ],
       ),
@@ -1165,10 +1204,14 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     final timeStr = '$mins$minUnit $secs$secUnit';
 
     final isAmrap = widget.workout.type == WorkoutType.amrap;
+    if (isAmrap) {
+      _customAmrapRounds ??= session?.completedRounds ?? 0;
+      _customAmrapExtraReps ??= session?.extraReps ?? 0;
+    }
     final String roundsStr;
     if (isAmrap) {
-      final completed = session?.completedRounds ?? 0;
-      final extra = session?.extraReps ?? 0;
+      final completed = _customAmrapRounds ?? session?.completedRounds ?? 0;
+      final extra = _customAmrapExtraReps ?? session?.extraReps ?? 0;
       if (extra > 0) {
         roundsStr = '$completed + $extra';
       } else {
@@ -1197,6 +1240,217 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
       case TimerStyle.circular:
         return _buildClassicSummaryScreen(context, ref, currentTheme, session, timeStr, roundsStr, calories, durationSec, scaleConfig, l10n);
     }
+  }
+
+  Widget _buildAmrapRoundsEditor(AppThemeConfig currentTheme) {
+    final isLight = currentTheme.isLight;
+    final cardColor = isLight ? currentTheme.surface : const Color(0xFF0F172A).withValues(alpha: 0.85);
+    final borderColor = isLight ? const Color(0xFFCBD5E1) : currentTheme.accent.withValues(alpha: 0.5);
+    final textColor = isLight ? const Color(0xFF0F172A) : Colors.white;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.edit_note_rounded, color: currentTheme.accent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Корректировка AMRAP итогов',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Раунды:', style: TextStyle(fontSize: 12, color: currentTheme.textSecondary)),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(Icons.remove_circle_outline_rounded, color: currentTheme.accent),
+                          onPressed: () {
+                            if ((_customAmrapRounds ?? 0) > 0) {
+                              setState(() => _customAmrapRounds = (_customAmrapRounds ?? 0) - 1);
+                            }
+                          },
+                        ),
+                        Text(
+                          '${_customAmrapRounds ?? 0}',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: textColor),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(Icons.add_circle_outline_rounded, color: currentTheme.accent),
+                          onPressed: () {
+                            setState(() => _customAmrapRounds = (_customAmrapRounds ?? 0) + 1);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Доп. повторения:', style: TextStyle(fontSize: 12, color: currentTheme.textSecondary)),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(Icons.remove_circle_outline_rounded, color: currentTheme.accent),
+                          onPressed: () {
+                            if ((_customAmrapExtraReps ?? 0) > 0) {
+                              setState(() => _customAmrapExtraReps = (_customAmrapExtraReps ?? 0) - 1);
+                            }
+                          },
+                        ),
+                        Text(
+                          '${_customAmrapExtraReps ?? 0}',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: textColor),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(Icons.add_circle_outline_rounded, color: currentTheme.accent),
+                          onPressed: () {
+                            setState(() => _customAmrapExtraReps = (_customAmrapExtraReps ?? 0) + 1);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRpeSelector(AppThemeConfig currentTheme) {
+    final isLight = currentTheme.isLight;
+    final cardColor = isLight ? currentTheme.surface : const Color(0xFF0F172A).withValues(alpha: 0.85);
+    final borderColor = isLight ? const Color(0xFFCBD5E1) : currentTheme.accent.withValues(alpha: 0.5);
+    final textColor = isLight ? const Color(0xFF0F172A) : Colors.white;
+
+    final rpeDescriptions = {
+      1: '1 — Очень легко / Разминка',
+      2: '2 — Легко, дыхание ровное',
+      3: '3 — Умеренно легко',
+      4: '4 — Комфортная работа',
+      5: '5 — Ощутимая нагрузка',
+      6: '6 — Начало усталости',
+      7: '7 — Тяжело (запас 2-3 повт.)',
+      8: '8 — Очень тяжело (запас 1-2)',
+      9: '9 — Почти предел (запас 1)',
+      10: '10 — Абсолютный максимум (RPE 10)',
+    };
+
+    Color getRpeColor(int rpe) {
+      if (rpe <= 3) return const Color(0xFF10B981);
+      if (rpe <= 6) return const Color(0xFFF59E0B);
+      if (rpe <= 8) return const Color(0xFFEF4444);
+      return const Color(0xFF9333EA);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.speed_rounded, color: currentTheme.accent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Сложность нагрузки (RPE 1–10)',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(10, (idx) {
+              final val = idx + 1;
+              final isSel = _selectedRpe == val;
+              final color = getRpeColor(val);
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedRpe = isSel ? null : val);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 27,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSel ? color : color.withValues(alpha: isLight ? 0.12 : 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSel ? color : color.withValues(alpha: isLight ? 0.4 : 0.6),
+                      width: isSel ? 2 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    '$val',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w900,
+                      color: isSel ? Colors.white : (isLight ? const Color(0xFF1E293B) : Colors.white),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          if (_selectedRpe != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              rpeDescriptions[_selectedRpe] ?? '',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: getRpeColor(_selectedRpe!),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildNeonSummaryScreen(
@@ -1336,7 +1590,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                             icon: Icons.timer_outlined,
                             width: useThreeCols ? itemWidth : (constraints.maxWidth - 10) / 2,
                             cardColor: cardColor,
-                            borderColor: isLight ? currentTheme.cardBorder : const Color(0xFF00D4FF),
+                            borderColor: isLight ? const Color(0xFF64748B) : const Color(0xFF00D4FF),
                             scaleConfig: scaleConfig,
                             isLight: isLight,
                           ),
@@ -1346,7 +1600,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                             icon: Icons.repeat_rounded,
                             width: useThreeCols ? itemWidth : (constraints.maxWidth - 10) / 2,
                             cardColor: cardColor,
-                            borderColor: isLight ? currentTheme.cardBorder : const Color(0xFF00D4FF),
+                            borderColor: isLight ? const Color(0xFF64748B) : const Color(0xFF00D4FF),
                             scaleConfig: scaleConfig,
                             isLight: isLight,
                           ),
@@ -1356,7 +1610,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                             icon: Icons.local_fire_department_rounded,
                             width: useThreeCols ? itemWidth : constraints.maxWidth,
                             cardColor: cardColor,
-                            borderColor: isLight ? currentTheme.cardBorder : const Color(0xFF00D4FF),
+                            borderColor: isLight ? const Color(0xFF64748B) : const Color(0xFF00D4FF),
                             scaleConfig: scaleConfig,
                             isLight: isLight,
                           ),
@@ -1367,19 +1621,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
 
                   const SizedBox(height: 14),
 
-                  // AI Тренер совет и рекомендации
-                  AiCoachFeedbackCard(
-                    workoutName: widget.workout.name,
-                    type: widget.workout.type,
-                    durationSeconds: durationSec > 0 ? durationSec : 60,
-                    caloriesBurned: calories,
-                    completedRounds: session?.completedRounds ?? 0,
-                    tags: widget.workout.tags,
-                    theme: currentTheme,
-                    userNote: _commentController.text.trim().isEmpty ? null : _commentController.text.trim(),
-                  ),
+                  if (widget.workout.type == WorkoutType.amrap)
+                    _buildAmrapRoundsEditor(currentTheme),
 
-                  const SizedBox(height: 12),
+                  _buildRpeSelector(currentTheme),
 
                   // Поле комментария
                   Container(
@@ -1388,8 +1633,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                       color: cardColor,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isLight ? currentTheme.cardBorder : const Color(0xFF00D4FF).withValues(alpha: 0.35),
-                        width: 1.5,
+                        color: isLight ? const Color(0xFF64748B) : const Color(0xFF00D4FF).withValues(alpha: 0.6),
+                        width: 1.8,
                       ),
                     ),
                     child: TextField(
@@ -1402,7 +1647,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                       ),
                       decoration: InputDecoration(
                         border: InputBorder.none,
-                        hintText: l10n?.addCommentHint ?? 'Заметки о самочувствии...',
+                        hintText: l10n?.addCommentHint ?? 'Заметки к тренировке (самочувствие, веса)...',
                         hintStyle: GoogleFonts.inter(
                           color: isLight ? currentTheme.textSecondary : Colors.white38,
                           fontSize: 14,
@@ -1445,6 +1690,15 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                           if (session != null) {
                             final noteText = _commentController.text.trim();
                             session.note = noteText.isNotEmpty ? noteText : null;
+                            session.rpe = _selectedRpe;
+                            if (widget.workout.type == WorkoutType.amrap) {
+                              if (_customAmrapRounds != null) {
+                                session.completedRounds = _customAmrapRounds!;
+                              }
+                              if (_customAmrapExtraReps != null) {
+                                session.extraReps = _customAmrapExtraReps!;
+                              }
+                            }
                             await ref.read(historyRepositoryProvider).saveSession(session);
                           }
                           ref.invalidate(historyProvider);
@@ -1497,7 +1751,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     final primaryTextColor = isLight ? const Color(0xFF0A0F1D) : Colors.white;
     final secondaryTextColor = isLight ? const Color(0xFF334155) : const Color(0xFFA78BFA);
     final accentColor = currentTheme.accent;
-    final borderColor = isLight ? currentTheme.cardBorder : const Color(0xFF8B5CF6).withValues(alpha: 0.35);
+    final borderColor = isLight ? const Color(0xFF64748B) : const Color(0xFF8B5CF6).withValues(alpha: 0.6);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -1734,19 +1988,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
 
                   const SizedBox(height: 14),
 
-                  // AI Тренер совет и рекомендации
-                  AiCoachFeedbackCard(
-                    workoutName: widget.workout.name,
-                    type: widget.workout.type,
-                    durationSeconds: durationSec > 0 ? durationSec : 60,
-                    caloriesBurned: calories,
-                    completedRounds: session?.completedRounds ?? 0,
-                    tags: widget.workout.tags,
-                    theme: currentTheme,
-                    userNote: _commentController.text.trim().isEmpty ? null : _commentController.text.trim(),
-                  ),
+                  if (widget.workout.type == WorkoutType.amrap)
+                    _buildAmrapRoundsEditor(currentTheme),
 
-                  const SizedBox(height: 12),
+                  _buildRpeSelector(currentTheme),
 
                   // Поле комментария
                   Container(
@@ -1756,7 +2001,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: borderColor,
-                        width: 1.5,
+                        width: 1.8,
                       ),
                     ),
                     child: TextField(
@@ -1769,7 +2014,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                       ),
                       decoration: InputDecoration(
                         border: InputBorder.none,
-                        hintText: l10n?.addCommentHint ?? 'Добавить комментарий или заметку...',
+                        hintText: l10n?.addCommentHint ?? 'Заметки к тренировке (самочувствие, веса)...',
                         hintStyle: GoogleFonts.inter(
                           color: secondaryTextColor.withValues(alpha: 0.6),
                           fontSize: 14,
@@ -1811,6 +2056,15 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                           if (session != null) {
                             final noteText = _commentController.text.trim();
                             session.note = noteText.isNotEmpty ? noteText : null;
+                            session.rpe = _selectedRpe;
+                            if (widget.workout.type == WorkoutType.amrap) {
+                              if (_customAmrapRounds != null) {
+                                session.completedRounds = _customAmrapRounds!;
+                              }
+                              if (_customAmrapExtraReps != null) {
+                                session.extraReps = _customAmrapExtraReps!;
+                              }
+                            }
                             await ref.read(historyRepositoryProvider).saveSession(session);
                           }
                           ref.invalidate(historyProvider);
@@ -1982,19 +2236,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
 
               const SizedBox(height: 14),
 
-              // AI Тренер совет и рекомендации
-              AiCoachFeedbackCard(
-                workoutName: widget.workout.name,
-                type: widget.workout.type,
-                durationSeconds: durationSec > 0 ? durationSec : 60,
-                caloriesBurned: calories,
-                completedRounds: session?.completedRounds ?? 0,
-                tags: widget.workout.tags,
-                theme: currentTheme,
-                userNote: _commentController.text.trim().isEmpty ? null : _commentController.text.trim(),
-              ),
+              if (widget.workout.type == WorkoutType.amrap)
+                _buildAmrapRoundsEditor(currentTheme),
 
-              const SizedBox(height: 12),
+              _buildRpeSelector(currentTheme),
 
               // Comment box
               Container(
@@ -2003,8 +2248,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                   color: currentTheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isLight ? const Color(0xFF94A3B8) : currentTheme.cardBorder,
-                    width: isLight ? 1.5 : 1.0,
+                    color: isLight ? const Color(0xFF64748B) : currentTheme.cardBorder,
+                    width: 1.8,
                   ),
                   boxShadow: isLight
                       ? [
@@ -2026,7 +2271,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                   ),
                   decoration: InputDecoration(
                     border: InputBorder.none,
-                    hintText: l10n?.addCommentHint ?? 'Добавить комментарий или заметку...',
+                    hintText: l10n?.addCommentHint ?? 'Заметки к тренировке (самочувствие, веса)...',
                     hintStyle: TextStyle(
                       color: secondaryTextColor.withValues(alpha: 0.6),
                       fontSize: 14,
@@ -2068,6 +2313,15 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                       if (session != null) {
                         final noteText = _commentController.text.trim();
                         session.note = noteText.isNotEmpty ? noteText : null;
+                        session.rpe = _selectedRpe;
+                        if (widget.workout.type == WorkoutType.amrap) {
+                          if (_customAmrapRounds != null) {
+                            session.completedRounds = _customAmrapRounds!;
+                          }
+                          if (_customAmrapExtraReps != null) {
+                            session.extraReps = _customAmrapExtraReps!;
+                          }
+                        }
                         await ref.read(historyRepositoryProvider).saveSession(session);
                       }
                       ref.invalidate(historyProvider);
@@ -2112,8 +2366,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: borderColor.withValues(alpha: isLight ? 0.6 : 0.4),
-          width: 1.5,
+          color: borderColor.withValues(alpha: isLight ? 0.9 : 0.7),
+          width: 1.8,
         ),
         boxShadow: [
           BoxShadow(

@@ -428,11 +428,20 @@ class _CosmicTimerViewState extends State<CosmicTimerView> with TickerProviderSt
 
           // 3. Основной контент в SafeArea
           SafeArea(
-            child: Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final availableHeight = constraints.maxHeight;
+                final isCompactHeight = availableHeight < 720;
+                final double dialSize = (availableHeight * 0.32).clamp(190.0, 270.0);
+
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 580),
+                    child: Column(
               children: [
                 // Шапка экрана
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: isCompactHeight ? 10 : 18),
                   child: Row(
                     children: [
                       // Кнопка выхода / завершения
@@ -557,7 +566,7 @@ class _CosmicTimerViewState extends State<CosmicTimerView> with TickerProviderSt
                   const Spacer(flex: 1),
 
                   // 3. Следующее упражнение внизу под кругами
-                  if (nextExerciseName.isNotEmpty) ...[
+                  if (nextExerciseName != null && nextExerciseName.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Text(
@@ -619,12 +628,13 @@ class _CosmicTimerViewState extends State<CosmicTimerView> with TickerProviderSt
                     currentExerciseName: currentExerciseName,
                     nextExerciseName: nextExerciseName,
                     isRestPhase: isRestPhase,
+                    customDialSize: dialSize,
                   ),
 
                   const Spacer(flex: 1),
 
                   // Следующее упражнение ПОД циферблатом
-                  if (nextExerciseName.isNotEmpty)
+                  if (nextExerciseName != null && nextExerciseName.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: FittedBox(
@@ -754,6 +764,10 @@ class _CosmicTimerViewState extends State<CosmicTimerView> with TickerProviderSt
               ],
             ),
           ),
+        );
+      },
+    ),
+  ),
         ],
       ),
     ),
@@ -772,10 +786,11 @@ class _CosmicTimerViewState extends State<CosmicTimerView> with TickerProviderSt
     required String? currentExerciseName,
     required String? nextExerciseName,
     required bool isRestPhase,
+    double? customDialSize,
   }) {
     final isLight = widget.theme.isLight;
     final isCosmic = widget.theme.timerStyle == TimerStyle.cosmic;
-    const double dialSize = 270.0;
+    final double dialSize = customDialSize ?? 270.0;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -806,7 +821,7 @@ class _CosmicTimerViewState extends State<CosmicTimerView> with TickerProviderSt
 
                 // Кастомный художник дуги прогресса со светящейся точкой на конце
                 CustomPaint(
-                  size: const Size(dialSize, dialSize),
+                  size: Size(dialSize, dialSize),
                   painter: _OrbitalDialPainter(
                     progress: widget.progress.clamp(0.0, 1.0),
                     trackColor: isLight ? const Color(0xFFE2E8F0) : const Color(0xFF22113D),

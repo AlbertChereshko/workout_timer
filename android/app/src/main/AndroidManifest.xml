@@ -74,6 +74,7 @@
     <queries>
         <package android:name="com.spotify.music" />
         <package android:name="com.google.android.apps.youtube.music" />
+        <package android:name="com.github.libretube" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
@@ -89,6 +90,10 @@
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="youtubemusic" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="audio/*" />
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />

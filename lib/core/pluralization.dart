@@ -25,6 +25,9 @@ class RussianPlural {
   /// 1 упражнение, 2 упражнения, 5 упражнений
   static String exercises(int count) => plural(count, 'упражнение', 'упражнения', 'упражнений');
 
+  /// 1 комплекс, 2 комплекса, 5 комплексов
+  static String workouts(int count) => plural(count, 'комплекс', 'комплекса', 'комплексов');
+
   /// 1 секунда, 2 секунды, 5 секунд
   static String seconds(int count) => plural(count, 'секунда', 'секунды', 'секунд');
 
@@ -89,6 +92,20 @@ class PluralHelper {
       return RussianPlural.plural(count, 'vježba', 'vježbe', 'vježbi');
     }
     return count == 1 ? '$count exercise' : '$count exercises';
+  }
+
+  static String workouts(int count, [String? localeCode]) {
+    final lang = localeCode ?? 'ru';
+    if (lang == 'ru') {
+      return RussianPlural.workouts(count);
+    }
+    if (lang == 'de') {
+      return count == 1 ? '$count Workout' : '$count Workouts';
+    }
+    if (lang == 'hr') {
+      return RussianPlural.plural(count, 'trening', 'treninga', 'treninga');
+    }
+    return count == 1 ? '$count workout' : '$count workouts';
   }
 
   static String daysAgo(int days, {bool short = false, String? localeCode}) {

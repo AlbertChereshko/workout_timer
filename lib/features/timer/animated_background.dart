@@ -39,6 +39,8 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> with SingleTick
   Color _getPhaseColor() {
     final t = widget.theme ?? AppTheme.currentConfig;
     switch (widget.phase) {
+      case TimerPhase.warmup:
+        return const Color(0xFFFFB300);
       case TimerPhase.countdown:
         return t.countdownPhase;
       case TimerPhase.work:

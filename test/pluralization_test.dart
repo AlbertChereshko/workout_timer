@@ -36,6 +36,16 @@ void main() {
       expect(RussianPlural.exercises(21), '21 упражнение');
     });
 
+    test('workouts declension', () {
+      expect(RussianPlural.workouts(1), '1 комплекс');
+      expect(RussianPlural.workouts(2), '2 комплекса');
+      expect(RussianPlural.workouts(4), '4 комплекса');
+      expect(RussianPlural.workouts(5), '5 комплексов');
+      expect(RussianPlural.workouts(11), '11 комплексов');
+      expect(RussianPlural.workouts(21), '21 комплекс');
+      expect(RussianPlural.workouts(25), '25 комплексов');
+    });
+
     test('daysAgo declension', () {
       expect(RussianPlural.daysAgo(0), 'Сегодня');
       expect(RussianPlural.daysAgo(1), 'Вчера');

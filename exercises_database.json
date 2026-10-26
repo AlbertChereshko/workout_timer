@@ -1,0 +1,532 @@
+[
+  {
+    "id": "plank_classic",
+    "name": "Планка на локтях",
+    "description": "Изометрическое удержание ровной линии тела",
+    "targetMuscle": "coreStatic",
+    "isStatic": true,
+    "defaultDurationSeconds": 40,
+    "defaultReps": 12,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "Статика",
+      "Кор",
+      "Пресс"
+    ]
+  },
+  {
+    "id": "side_plank",
+    "name": "Боковая планка",
+    "description": "Изометрия косых мышц пресса и стабилизаторов",
+    "targetMuscle": "coreStatic",
+    "isStatic": true,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 12,
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "tags": [
+      "Статика",
+      "Кор",
+      "Косые"
+    ]
+  },
+  {
+    "id": "wall_sit",
+    "name": "Стульчик у стены",
+    "description": "Статическое удержание бедер параллельно полу",
+    "targetMuscle": "coreStatic",
+    "isStatic": true,
+    "defaultDurationSeconds": 45,
+    "defaultReps": 12,
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "tags": [
+      "Статика",
+      "Ноги",
+      "Изометрия"
+    ]
+  },
+  {
+    "id": "hollow_body",
+    "name": "Лодочка (Холлоу боди)",
+    "description": "Статическое натяжение кора с прижатой поясницей",
+    "targetMuscle": "coreStatic",
+    "isStatic": true,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 12,
+    "equipment": "bodyweight",
+    "difficulty": "advanced",
+    "tags": [
+      "Статика",
+      "Кор",
+      "Пресс"
+    ]
+  },
+  {
+    "id": "superman",
+    "name": "Лодочка на животе (Супермен)",
+    "description": "Удержание прогиба для укрепления разгибателей спины",
+    "targetMuscle": "coreStatic",
+    "isStatic": true,
+    "defaultDurationSeconds": 35,
+    "defaultReps": 12,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "Статика",
+      "Спина",
+      "Поясница"
+    ]
+  },
+  {
+    "id": "crunches",
+    "name": "Скручивания на пресс",
+    "description": "Контролируемый подъем корпуса с акцентом на прямой мышце",
+    "targetMuscle": "coreStatic",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 20,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "Кор",
+      "Пресс"
+    ]
+  },
+  {
+    "id": "russian_twists",
+    "name": "Русские скручивания",
+    "description": "Динамические повороты корпуса с поднятыми стопами",
+    "targetMuscle": "coreStatic",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 24,
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "tags": [
+      "Кор",
+      "Косые"
+    ]
+  },
+  {
+    "id": "mountain_climbers",
+    "name": "Скалолаз (Mountain Climbers)",
+    "description": "Попеременное подтягивание коленей к груди в планке",
+    "targetMuscle": "coreStatic",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 30,
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "tags": [
+      "Кор",
+      "Кардио",
+      "ВИТ"
+    ]
+  },
+  {
+    "id": "pushups_classic",
+    "name": "Классические отжимания",
+    "description": "Базовое движение для груди, трицепса и передних дельт",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 15,
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "tags": [
+      "Верх тела",
+      "Грудь",
+      "Трицепс"
+    ]
+  },
+  {
+    "id": "pushups_wide",
+    "name": "Широкие отжимания",
+    "description": "Акцент на грудные мышцы и плечевой пояс",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 12,
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "tags": [
+      "Верх тела",
+      "Грудь"
+    ]
+  },
+  {
+    "id": "pushups_diamond",
+    "name": "Алмазные отжимания",
+    "description": "Постановка ладоней треугольником с акцентом на трицепс",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 10,
+    "equipment": "bodyweight",
+    "difficulty": "advanced",
+    "tags": [
+      "Верх тела",
+      "Трицепс"
+    ]
+  },
+  {
+    "id": "pike_pushups",
+    "name": "Отжимания «домиком» (Пайк)",
+    "description": "Вертикальный жим собственным весом с акцентом на плечи",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 10,
+    "equipment": "bodyweight",
+    "difficulty": "advanced",
+    "tags": [
+      "Верх тела",
+      "Плечи"
+    ]
+  },
+  {
+    "id": "dips_bench",
+    "name": "Обратные отжимания от скамьи/стула",
+    "description": "Изолирующая проработка трехглавой мышцы плеча",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 15,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "Верх тела",
+      "Трицепс"
+    ]
+  },
+  {
+    "id": "air_squats",
+    "name": "Воздушные приседания",
+    "description": "Классические глубокие приседания с ровной спиной",
+    "targetMuscle": "lowerBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 20,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "Низ тела",
+      "Квадрицепс",
+      "Ягодицы"
+    ]
+  },
+  {
+    "id": "lunges",
+    "name": "Выпады на месте",
+    "description": "Попеременные шаги вперед с прямым углом в коленях",
+    "targetMuscle": "lowerBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 16,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "Низ тела",
+      "Квадрицепс",
+      "Ягодицы"
+    ]
+  },
+  {
+    "id": "jump_squats",
+    "name": "Приседания с выпрыгиванием",
+    "description": "Взрывные плиометрические приседания",
+    "targetMuscle": "lowerBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 15,
+    "equipment": "bodyweight",
+    "difficulty": "advanced",
+    "tags": [
+      "Низ тела",
+      "Плиометрика",
+      "ВИТ"
+    ]
+  },
+  {
+    "id": "glute_bridge",
+    "name": "Ягодичный мостик",
+    "description": "Подъем таза лежа на спине с фиксацией в верхней точке",
+    "targetMuscle": "lowerBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 20,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "Низ тела",
+      "Ягодицы",
+      "Бицепс бедра"
+    ]
+  },
+  {
+    "id": "calf_raises",
+    "name": "Подъемы на носки",
+    "description": "Изолированная нагрузка на икроножные мышцы",
+    "targetMuscle": "lowerBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 25,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "Низ тела",
+      "Икры"
+    ]
+  },
+  {
+    "id": "burpees",
+    "name": "Бёрпи классические",
+    "description": "Упор лежа, отжимание, поднос ног и выпрыгивание с хлопком",
+    "targetMuscle": "metabolicFullBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 10,
+    "equipment": "bodyweight",
+    "difficulty": "advanced",
+    "tags": [
+      "ВИТ на всё тело",
+      "Full Body",
+      "Кардио"
+    ]
+  },
+  {
+    "id": "jumping_jacks",
+    "name": "Прыжки «Джампинг Джек»",
+    "description": "Прыжки с разведением рук и ног для активного пульса",
+    "targetMuscle": "metabolicFullBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 35,
+    "equipment": "bodyweight",
+    "difficulty": "beginner",
+    "tags": [
+      "ВИТ на всё тело",
+      "Кардио",
+      "Разминка"
+    ]
+  },
+  {
+    "id": "high_knees",
+    "name": "Бег с высоким подниманием колен",
+    "description": "Интенсивный спринт на месте с акцентом на темп",
+    "targetMuscle": "metabolicFullBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 40,
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "tags": [
+      "ВИТ на всё тело",
+      "Кардио"
+    ]
+  },
+  {
+    "id": "skater_hops",
+    "name": "Прыжки конькобежца",
+    "description": "Латеральные взрывные прыжки из стороны в сторону",
+    "targetMuscle": "metabolicFullBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 20,
+    "equipment": "bodyweight",
+    "difficulty": "intermediate",
+    "tags": [
+      "ВИТ на всё тело",
+      "Баланс",
+      "Плиометрика"
+    ]
+  },
+  {
+    "id": "kb_swings",
+    "name": "Махи гирей (Kettlebell Swings)",
+    "description": "Взрывной тазовый толчок с выносом гири до уровня груди",
+    "targetMuscle": "metabolicFullBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 15,
+    "equipment": "kettlebell",
+    "difficulty": "intermediate",
+    "tags": [
+      "Гиря",
+      "Full Body",
+      "Спина",
+      "Ягодицы"
+    ]
+  },
+  {
+    "id": "kb_swings_16",
+    "name": "Махи гирей 16 кг",
+    "description": "Взрывной тазовый толчок с тяжелой гирей 16 кг для силы и мощности",
+    "targetMuscle": "metabolicFullBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 15,
+    "equipment": "kettlebell16",
+    "difficulty": "advanced",
+    "tags": [
+      "Гиря",
+      "16 кг",
+      "Full Body",
+      "Спина",
+      "Ягодицы"
+    ]
+  },
+  {
+    "id": "kb_swings_6",
+    "name": "Махи гирей 6 кг",
+    "description": "Высокоинтенсивные аэробные махи с легкой гирей 6 кг на выносливость",
+    "targetMuscle": "metabolicFullBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 20,
+    "equipment": "kettlebell6",
+    "difficulty": "beginner",
+    "tags": [
+      "Гиря",
+      "6 кг",
+      "ВИТ",
+      "Full Body"
+    ]
+  },
+  {
+    "id": "kb_goblet_squats",
+    "name": "Кубковые приседания с гирей",
+    "description": "Приседания с удержанием гири у груди двумя руками",
+    "targetMuscle": "lowerBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 12,
+    "equipment": "kettlebell",
+    "difficulty": "intermediate",
+    "tags": [
+      "Гиря",
+      "Низ тела",
+      "Квадрицепс"
+    ]
+  },
+  {
+    "id": "kb_goblet_squats_16",
+    "name": "Кубковые приседания 16 кг",
+    "description": "Глубокие силовые приседания с удержанием тяжелой гири 16 кг у груди",
+    "targetMuscle": "lowerBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 12,
+    "equipment": "kettlebell16",
+    "difficulty": "advanced",
+    "tags": [
+      "Гиря",
+      "16 кг",
+      "Низ тела",
+      "Квадрицепс"
+    ]
+  },
+  {
+    "id": "kb_clean_and_press",
+    "name": "Взятие и жим гири",
+    "description": "Комплексный подъем снаряда на плечо и фиксация над головой",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 8,
+    "equipment": "kettlebell",
+    "difficulty": "advanced",
+    "tags": [
+      "Гиря",
+      "Верх тела",
+      "Плечи"
+    ]
+  },
+  {
+    "id": "kb_clean_and_press_16",
+    "name": "Взятие и жим гири 16 кг",
+    "description": "Тяжелый силовой подъем и жим гири 16 кг над головой",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 8,
+    "equipment": "kettlebell16",
+    "difficulty": "advanced",
+    "tags": [
+      "Гиря",
+      "16 кг",
+      "Верх тела",
+      "Плечи"
+    ]
+  },
+  {
+    "id": "kb_clean_and_press_6",
+    "name": "Взятие и жим гири 6 кг",
+    "description": "Скоростной многоповторный жим гири 6 кг в темпе",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 12,
+    "equipment": "kettlebell6",
+    "difficulty": "intermediate",
+    "tags": [
+      "Гиря",
+      "6 кг",
+      "Верх тела",
+      "Плечи"
+    ]
+  },
+  {
+    "id": "kb_halo_6",
+    "name": "Вращение гири вокруг головы (Нимб) 6 кг",
+    "description": "Круговые движения легкой гирей 6 кг для здоровья плеч и кора",
+    "targetMuscle": "upperBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 10,
+    "equipment": "kettlebell6",
+    "difficulty": "beginner",
+    "tags": [
+      "Гиря",
+      "6 кг",
+      "Плечи",
+      "Кор"
+    ]
+  },
+  {
+    "id": "kb_snatch_6",
+    "name": "Рывок гири 6 кг",
+    "description": "Быстрый непрерывный взрывной подъем легкой гири 6 кг",
+    "targetMuscle": "metabolicFullBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 14,
+    "equipment": "kettlebell6",
+    "difficulty": "intermediate",
+    "tags": [
+      "Гиря",
+      "6 кг",
+      "ВИТ",
+      "Full Body"
+    ]
+  },
+  {
+    "id": "kb_deadlift_16",
+    "name": "Становая тяга с гирей 16 кг",
+    "description": "Классическая тяга тяжелой гири 16 кг с акцентом на заднюю цепочку",
+    "targetMuscle": "lowerBody",
+    "isStatic": false,
+    "defaultDurationSeconds": 30,
+    "defaultReps": 12,
+    "equipment": "kettlebell16",
+    "difficulty": "intermediate",
+    "tags": [
+      "Гиря",
+      "16 кг",
+      "Низ тела",
+      "Спина"
+    ]
+  }
+]

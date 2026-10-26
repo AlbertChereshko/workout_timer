@@ -16,7 +16,19 @@ class MainActivity : FlutterActivity() {
                     val packageName = call.argument<String>("package")
                     if (packageName != null) {
                         try {
-                            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                            var launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                            if (launchIntent == null) {
+                                val intent = Intent(Intent.ACTION_MAIN).apply {
+                                    addCategory(Intent.CATEGORY_LAUNCHER)
+                                    setPackage(packageName)
+                                }
+                                val resolve = packageManager.queryIntentActivities(intent, 0)
+                                if (resolve.isNotEmpty()) {
+                                    val activity = resolve[0].activityInfo
+                                    intent.setClassName(activity.packageName, activity.name)
+                                    launchIntent = intent
+                                }
+                            }
                             if (launchIntent != null) {
                                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 startActivity(launchIntent)
@@ -42,6 +54,26 @@ class MainActivity : FlutterActivity() {
                         }
                     } else {
                         result.success(false)
+                    }
+                }
+                "launchMusicPlayer" -> {
+                    try {
+                        val intent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_APP_MUSIC)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        if (intent.resolveActivity(packageManager) != null) {
+                            startActivity(intent)
+                            result.success(true)
+                        } else {
+                            val fallback = Intent(android.provider.MediaStore.INTENT_ACTION_MUSIC_PLAYER).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(fallback)
+                            result.success(true)
+                        }
+                    } catch (e: Exception) {
+                        result.error("LAUNCH_FAILED", e.message, null)
                     }
                 }
                 else -> result.notImplemented()

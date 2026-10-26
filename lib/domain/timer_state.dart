@@ -1,4 +1,4 @@
-enum TimerPhase { countdown, work, rest, finished }
+enum TimerPhase { countdown, warmup, work, rest, finished }
 
 class TimerState {
   final TimerPhase phase;
@@ -9,6 +9,7 @@ class TimerState {
   final bool isRunning;
   final int currentExerciseIndex;
   final int extraReps;
+  final int warmupTotalSeconds;
 
   TimerState({
     required this.phase,
@@ -19,6 +20,7 @@ class TimerState {
     required this.isRunning,
     this.currentExerciseIndex = 0,
     this.extraReps = 0,
+    this.warmupTotalSeconds = 0,
   });
 
   TimerState copyWith({
@@ -30,6 +32,7 @@ class TimerState {
     bool? isRunning,
     int? currentExerciseIndex,
     int? extraReps,
+    int? warmupTotalSeconds,
   }) {
     return TimerState(
       phase: phase ?? this.phase,
@@ -40,6 +43,7 @@ class TimerState {
       isRunning: isRunning ?? this.isRunning,
       currentExerciseIndex: currentExerciseIndex ?? this.currentExerciseIndex,
       extraReps: extraReps ?? this.extraReps,
+      warmupTotalSeconds: warmupTotalSeconds ?? this.warmupTotalSeconds,
     );
   }
 }

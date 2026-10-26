@@ -243,15 +243,15 @@ class AmrapFlowTimerView extends StatelessWidget {
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.08),
+                                    color: theme.isLight ? Colors.black.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.08),
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.15),
+                                      color: theme.isLight ? Colors.black.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.15),
                                     ),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.arrow_back_ios_new_rounded,
-                                    color: Colors.white,
+                                    color: theme.isLight ? const Color(0xFF0F172A) : Colors.white,
                                     size: 18,
                                   ),
                                 ),
@@ -267,19 +267,27 @@ class AmrapFlowTimerView extends StatelessWidget {
                                   fontSize: (isDesktop ? 40 : 32) * AppTypography.currentScale.activeDigitsScale,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 2.5,
-                                  color: Colors.white,
+                                  color: theme.isLight ? const Color(0xFF0F172A) : Colors.white,
                                   fontFeatures: const [FontFeature.tabularFigures()],
-                                  shadows: [
-                                    Shadow(
-                                      color: const Color(0xFF00F5D4).withValues(alpha: 0.75),
-                                      blurRadius: 28,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                    Shadow(
-                                      color: const Color(0xFFBD00FF).withValues(alpha: 0.45),
-                                      blurRadius: 44,
-                                    ),
-                                  ],
+                                  shadows: theme.isLight
+                                      ? [
+                                          Shadow(
+                                            color: const Color(0xFF00F5D4).withValues(alpha: 0.35),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ]
+                                      : [
+                                          Shadow(
+                                            color: const Color(0xFF00F5D4).withValues(alpha: 0.75),
+                                            blurRadius: 28,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                          Shadow(
+                                            color: const Color(0xFFBD00FF).withValues(alpha: 0.45),
+                                            blurRadius: 44,
+                                          ),
+                                        ],
                                 ),
                               ),
                             ),
@@ -299,15 +307,15 @@ class AmrapFlowTimerView extends StatelessWidget {
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.08),
+                                    color: theme.isLight ? Colors.black.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.08),
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.15),
+                                      color: theme.isLight ? Colors.black.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.15),
                                     ),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.music_note_rounded,
-                                    color: Colors.white,
+                                    color: theme.isLight ? const Color(0xFF0F172A) : Colors.white,
                                     size: 20,
                                   ),
                                 ),
@@ -447,15 +455,20 @@ class AmrapFlowTimerView extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Далее: $nextLabel',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.85),
-                                      fontSize: isDesktop ? 14 : 12.5,
-                                      fontWeight: FontWeight.w500,
+                                  const SizedBox(height: 3),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                                    child: Text(
+                                      'Далее: $nextLabel',
+                                      maxLines: 3,
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        fontSize: isDesktop ? 14 : 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.2,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -535,19 +548,27 @@ class AmrapFlowTimerView extends StatelessWidget {
                 style: GoogleFonts.chakraPetch(
                   fontSize: timerFontSize,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: theme.isLight ? const Color(0xFF0F172A) : Colors.white,
                   letterSpacing: (2.5 * scale).clamp(1.5, 5.0),
                   fontFeatures: const [FontFeature.tabularFigures()],
-                  shadows: [
-                    Shadow(
-                      color: mintColor.withValues(alpha: 0.8),
-                      blurRadius: (24 * scale).clamp(16.0, 48.0),
-                    ),
-                    Shadow(
-                      color: purpleColor.withValues(alpha: 0.5),
-                      blurRadius: (36 * scale).clamp(24.0, 64.0),
-                    ),
-                  ],
+                  shadows: theme.isLight
+                      ? [
+                          Shadow(
+                            color: mintColor.withValues(alpha: 0.35),
+                            blurRadius: (12 * scale).clamp(8.0, 24.0),
+                            offset: const Offset(0, 1),
+                          ),
+                        ]
+                      : [
+                          Shadow(
+                            color: mintColor.withValues(alpha: 0.8),
+                            blurRadius: (24 * scale).clamp(16.0, 48.0),
+                          ),
+                          Shadow(
+                            color: purpleColor.withValues(alpha: 0.5),
+                            blurRadius: (36 * scale).clamp(24.0, 64.0),
+                          ),
+                        ],
                 ),
               ),
 
@@ -559,14 +580,16 @@ class AmrapFlowTimerView extends StatelessWidget {
                 style: GoogleFonts.chakraPetch(
                   fontSize: roundFontSize,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: theme.isLight ? const Color(0xFF1E293B) : Colors.white,
                   letterSpacing: (1.8 * scale).clamp(1.2, 3.5),
-                  shadows: [
-                    Shadow(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      blurRadius: (12 * scale).clamp(8.0, 24.0),
-                    ),
-                  ],
+                  shadows: theme.isLight
+                      ? null
+                      : [
+                          Shadow(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            blurRadius: (12 * scale).clamp(8.0, 24.0),
+                          ),
+                        ],
                 ),
               ),
 
@@ -577,15 +600,17 @@ class AmrapFlowTimerView extends StatelessWidget {
                 approachSubtitle,
                 style: GoogleFonts.chakraPetch(
                   fontSize: approachFontSize,
-                  color: mintColor,
-                  fontWeight: FontWeight.w700,
+                  color: theme.isLight ? const Color(0xFF0F766E) : mintColor,
+                  fontWeight: FontWeight.w800,
                   letterSpacing: (1.2 * scale).clamp(0.8, 2.5),
-                  shadows: [
-                    Shadow(
-                      color: mintColor.withValues(alpha: 0.5),
-                      blurRadius: (10 * scale).clamp(6.0, 20.0),
-                    ),
-                  ],
+                  shadows: theme.isLight
+                      ? null
+                      : [
+                          Shadow(
+                            color: mintColor.withValues(alpha: 0.5),
+                            blurRadius: (10 * scale).clamp(6.0, 20.0),
+                          ),
+                        ],
                 ),
               ),
             ],

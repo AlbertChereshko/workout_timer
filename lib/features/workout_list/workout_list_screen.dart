@@ -22,6 +22,8 @@ import '../history/history_screen.dart';
 import '../../l10n/app_localizations.dart';
 import '../../core/pluralization.dart';
 import 'widgets/ai_recommendation_banner.dart';
+import 'widgets/workout_search_dialog.dart';
+import 'widgets/workout_start_bottom_sheet.dart';
 import '../workout_generator/ai_workout_generator_dialog.dart';
 export '../../data/repositories/workout_repository.dart' show workoutsProvider, workoutsNotifierProvider;
 
@@ -34,7 +36,8 @@ class WorkoutListScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
-  String _selectedTag = 'Все';
+  String _selectedEquipment = 'Все';
+  String _sortMode = 'default'; // 'default', 'duration_desc', 'duration_asc', 'recent', 'frequency'
   WorkoutType? _selectedType; // null = Все типы, WorkoutType.tabata, WorkoutType.emom
   bool _isCardView = true;
   String? _statusFilter; // 'done' | 'today' | 'plan'
@@ -49,6 +52,140 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
       }
     }
     return last;
+  }
+
+  int _sessionCount(Workout w, List<WorkoutSession> sessions) {
+    int count = 0;
+    for (final s in sessions) {
+      final matchId = w.isInBox && s.workoutId == w.key;
+      final matchName = s.workoutName.trim().toLowerCase() == w.name.trim().toLowerCase();
+      if (matchId || matchName) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  bool _workoutHasEquipment(Workout w) {
+    final lowerTags = w.tags.map((t) => t.toLowerCase()).toList();
+    final hasEquipmentTag = lowerTags.any((t) =>
+        t.contains('гиря') ||
+        t.contains('16') ||
+        t.contains('6') ||
+        t.contains('резин') ||
+        t.contains('гантел') ||
+        t.contains('штан') ||
+        t.contains('петл') ||
+        t.contains('турник') ||
+        t.contains('брус'));
+    final hasEquipmentInExercises = w.exercises.any((e) {
+      final name = e.name.toLowerCase();
+      final notes = (e.notes ?? '').toLowerCase();
+      return name.contains('16') ||
+          name.contains('6') ||
+          name.contains('гир') ||
+          name.contains('резин') ||
+          name.contains('гантел') ||
+          name.contains('штан') ||
+          name.contains('турник') ||
+          name.contains('брус') ||
+          name.contains('петл') ||
+          notes.contains('16') ||
+          notes.contains('6') ||
+          notes.contains('гир') ||
+          notes.contains('резин') ||
+          notes.contains('гантел');
+    });
+    return hasEquipmentTag || hasEquipmentInExercises;
+  }
+
+  bool _matchesEquipment(Workout w, String equipment) {
+    if (equipment == 'Все') return true;
+    final lowerEq = equipment.toLowerCase();
+    final lowerTags = w.tags.map((t) => t.toLowerCase()).toList();
+    final hasEquipmentInExercises = w.exercises.any((e) =>
+        e.name.toLowerCase().contains(lowerEq) || (e.description?.toLowerCase().contains(lowerEq) ?? false));
+
+    if (lowerEq == 'без инвентаря') {
+      final explicitNoEquip = lowerTags.any((t) => t.contains('без инвентар') || t.contains('свой вес'));
+      if (explicitNoEquip && !_workoutHasEquipment(w)) return true;
+      return !_workoutHasEquipment(w);
+    }
+
+    if (lowerEq == 'с инвентарём') {
+      return _workoutHasEquipment(w);
+    }
+
+    if (lowerEq == 'гиря 16 кг') {
+      final reg16 = RegExp(r'(^|\D)16\s*(кг|kg)?($|\D)', caseSensitive: false);
+      return lowerTags.any((t) => reg16.hasMatch(t) && (t.contains('кг') || t.contains('гир'))) ||
+          w.exercises.any((e) =>
+              RegExp(r'(^|\D)16\s*(кг|kg)($|\D)', caseSensitive: false).hasMatch(e.name) ||
+              (e.notes != null && RegExp(r'(^|\D)16\s*(кг|kg)($|\D)', caseSensitive: false).hasMatch(e.notes!)));
+    }
+
+    if (lowerEq == 'гиря 6 кг') {
+      final reg6 = RegExp(r'(^|\D)6\s*(кг|kg)?($|\D)', caseSensitive: false);
+      return lowerTags.any((t) => reg6.hasMatch(t) && (t.contains('кг') || t.contains('гир')) && !t.contains('16') && !t.contains('26')) ||
+          w.exercises.any((e) =>
+              RegExp(r'(^|\D)6\s*(кг|kg)($|\D)', caseSensitive: false).hasMatch(e.name) ||
+              (e.notes != null && RegExp(r'(^|\D)6\s*(кг|kg)($|\D)', caseSensitive: false).hasMatch(e.notes!)));
+    }
+
+    if (lowerEq == 'резинка') {
+      return lowerTags.any((t) => t.contains('резин')) ||
+          w.exercises.any((e) => e.name.toLowerCase().contains('резин') || (e.notes?.toLowerCase().contains('резин') ?? false));
+    }
+
+    return lowerTags.any((t) => t.contains(lowerEq)) || hasEquipmentInExercises;
+  }
+
+  List<Workout> _applySort(List<Workout> list, List<WorkoutSession> sessions) {
+    if (_sortMode == 'default') return list;
+    final sorted = List<Workout>.from(list);
+    switch (_sortMode) {
+      case 'no_equipment_first':
+        sorted.sort((a, b) {
+          final ea = _workoutHasEquipment(a) ? 1 : 0;
+          final eb = _workoutHasEquipment(b) ? 1 : 0;
+          if (ea != eb) return ea.compareTo(eb);
+          return a.name.compareTo(b.name);
+        });
+        break;
+      case 'equipment_first':
+        sorted.sort((a, b) {
+          final ea = _workoutHasEquipment(a) ? 0 : 1;
+          final eb = _workoutHasEquipment(b) ? 0 : 1;
+          if (ea != eb) return ea.compareTo(eb);
+          return a.name.compareTo(b.name);
+        });
+        break;
+      case 'duration_desc':
+        sorted.sort((a, b) => b.totalDurationSeconds.compareTo(a.totalDurationSeconds));
+        break;
+      case 'duration_asc':
+        sorted.sort((a, b) => a.totalDurationSeconds.compareTo(b.totalDurationSeconds));
+        break;
+      case 'recent':
+        final lastMap = {for (final w in sorted) w: _lastCompleted(w, sessions)};
+        sorted.sort((a, b) {
+          final la = lastMap[a], lb = lastMap[b];
+          if (la == null && lb == null) return 0;
+          if (la == null) return 1;
+          if (lb == null) return -1;
+          return lb.compareTo(la);
+        });
+        break;
+      case 'frequency':
+        final countMap = {for (final w in sorted) w: _sessionCount(w, sessions)};
+        sorted.sort((a, b) {
+          final cmp = countMap[b]!.compareTo(countMap[a]!);
+          if (cmp != 0) return cmp;
+          return a.name.compareTo(b.name);
+        });
+        break;
+    }
+    return sorted;
   }
 
   bool _isDoneRecently(DateTime? d) {
@@ -82,6 +219,19 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
     return [...rest, ...done];
   }
 
+  List<Workout> _applyStatusAndSort(List<Workout> list, List<WorkoutSession> sessions) {
+    var result = list;
+    if (_statusFilter != null) {
+      result = _applyStatus(result, sessions);
+    } else if (_sortMode == 'default') {
+      result = _applyStatus(result, sessions);
+    }
+    if (_sortMode != 'default') {
+      result = _applySort(result, sessions);
+    }
+    return result;
+  }
+
   Widget _statusChip(String id, String label, IconData icon, Color iconColor, AppThemeConfig t) {
     final sel = _statusFilter == id;
     return Expanded(
@@ -95,15 +245,18 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: sel ? t.accent : t.cardBorder, width: 1.5),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: iconColor),
-              const SizedBox(width: 6),
-              Text(label,
-                  style: TextStyle(
-                      color: sel ? t.accent : t.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
-            ],
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: iconColor),
+                const SizedBox(width: 6),
+                Text(label,
+                    style: TextStyle(
+                        color: sel ? t.accent : t.textPrimary, fontWeight: FontWeight.w700, fontSize: 13)),
+              ],
+            ),
           ),
         ),
       ),
@@ -146,6 +299,37 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
       MaterialPageRoute(builder: (_) => WorkoutEditorScreen(workout: workout)),
     );
     ref.read(workoutsNotifierProvider.notifier).refresh();
+  }
+
+  void _startWorkoutWithWarmup(Workout workout) {
+    WorkoutStartBottomSheet.show(
+      context: context,
+      workout: workout,
+      theme: ref.read(appThemeProvider),
+      onStart: (warmupSeconds) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TimerScreen(
+              workout: workout,
+              warmupSeconds: warmupSeconds,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openSearchDialog(List<Workout> workouts) {
+    WorkoutSearchDialog.show(
+      context: context,
+      workouts: workouts,
+      theme: ref.read(appThemeProvider),
+      onSelectWorkout: (workout) {
+        _startWorkoutWithWarmup(workout);
+      },
+      onEditWorkout: (workout) => _editWorkout(workout),
+    );
   }
 
   Future<void> _duplicateWorkout(Workout workout) async {
@@ -385,6 +569,65 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                           icon: const Icon(Icons.paste_rounded, size: 16),
                           label: const Text('Из буфера', style: TextStyle(fontSize: 12)),
                         ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.accent.withValues(alpha: 0.15),
+                            foregroundColor: theme.accent,
+                            elevation: 0,
+                            side: BorderSide(color: theme.accent),
+                          ),
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            const workoutPromptText = '''
+Ты профессиональный фитнес-методист. Сформируй тренировочный комплекс для мобильного приложения "Workout Timer" в строгом формате JSON:
+
+```json
+{
+  "name": "Название тренировки",
+  "type": "tabata",
+  "tags": ["Full Body", "16 кг", "ВИТ"],
+  "tabataWorkSeconds": 20,
+  "tabataRestSeconds": 10,
+  "tabataRounds": 8,
+  "emomRounds": 15,
+  "emomRoundDurationSeconds": 60,
+  "amrapDurationSeconds": 900,
+  "exercises": [
+    {
+      "name": "Махи гирей 16 кг",
+      "description": "Мощный посыл тазом, спина прямая",
+      "reps": 15,
+      "durationSeconds": null
+    },
+    {
+      "name": "Планка на предплечьях",
+      "description": "Кор в напряжении, без прогиба в пояснице",
+      "reps": null,
+      "durationSeconds": 30
+    }
+  ]
+}
+```
+
+СПРАВОЧНИК И ПРАВИЛА:
+1. type: "tabata", "emom" или "amrap"
+2. tags (выбирай из стандартизированного списка тегов):
+   "Верх", "Низ", "Кор", "Full Body", "Статика", "ВИТ", "Свой вес", "Резинка", "Гимнастика", "Лимфа", "16 кг", "6 кг"
+3. У атлета в арсенале ДВЕ ГИРИ: 16 кг (тяжелая) и 6 кг (легкая). Если комплекс с гирями, обязательно указывай конкретный вес (16 кг или 6 кг) в названии или описании каждого упражнения.
+4. Если упражнение статическое (планка, стульчик), указывай reps: null и durationSeconds (например 30 или 40 сек).
+''';
+                            Clipboard.setData(const ClipboardData(text: workoutPromptText));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Промпт генерации комплексов скопирован!'),
+                                duration: Duration(seconds: 3),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.auto_awesome, size: 16),
+                          label: const Text('Промпт для ИИ', style: TextStyle(fontSize: 12)),
+                        ),
                       ],
                     ),
                     if (errorText != null) ...[
@@ -487,36 +730,21 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
 
     final l10n = AppLocalizations.of(context);
 
-    // Collect all available tags dynamically from repository and workouts
-    final repoTags = ref.watch(tagsProvider);
-    final Set<String> allTagsSet = {'Все', ...repoTags};
-    for (final w in workouts) {
-      for (final t in w.tags) {
-        if (t == 'Верх тела') {
-          allTagsSet.add('Верх');
-        } else if (t == 'Низ тела') {
-          allTagsSet.add('Низ');
-        } else if (t == 'ВИТ на всё тело') {
-          allTagsSet.add('ВИТ');
-        } else {
-          allTagsSet.add(t);
-        }
-      }
-    }
-    final availableTags = allTagsSet.toList();
+    // Workout Counts with active equipment filter taken into account
+    final totalWorkoutsCount = workouts.length;
+    final tabataCount = workouts.where((w) => w.type == WorkoutType.tabata && _matchesEquipment(w, _selectedEquipment)).length;
+    final emomCount = workouts.where((w) => w.type == WorkoutType.emom && _matchesEquipment(w, _selectedEquipment)).length;
+    final amrapCount = workouts.where((w) => w.type == WorkoutType.amrap && _matchesEquipment(w, _selectedEquipment)).length;
 
-    // Filter workouts by selected tag and selected type
+    // Collect all available tags dynamically from repository and workouts
+    // Filter workouts by selected type and selected equipment
     final filteredWorkouts = workouts.where((w) {
-      final matchesTag = _selectedTag == 'Все' ||
-          w.tags.contains(_selectedTag) ||
-          (_selectedTag == 'Верх' && w.tags.contains('Верх тела')) ||
-          (_selectedTag == 'Низ' && w.tags.contains('Низ тела')) ||
-          (_selectedTag == 'ВИТ' && w.tags.contains('ВИТ на всё тело'));
       final matchesType = _selectedType == null || w.type == _selectedType;
-      return matchesTag && matchesType;
+      final matchesEquip = _matchesEquipment(w, _selectedEquipment);
+      return matchesType && matchesEquip;
     }).toList();
 
-    final displayWorkouts = _applyStatus(filteredWorkouts, allSessions);
+    final displayWorkouts = _applyStatusAndSort(filteredWorkouts, allSessions);
 
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 960;
@@ -536,114 +764,87 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(28, 24, 28, 14),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Row(
+                              children: [
+                                Text(
+                                  l10n?.workouts ?? 'Тренировки',
+                                  style: TextStyle(
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.6,
+                                    color: currentTheme.textPrimary,
+                                  ),
+                                ),
+                                const Spacer(),
+                                _buildSortButton(currentTheme),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  tooltip: 'Поиск тренировок и упражнений',
+                                  icon: Icon(Icons.search_rounded, color: currentTheme.accent, size: 26),
+                                  onPressed: () => _openSearchDialog(workouts),
+                                ),
+                                const SizedBox(width: 8),
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: currentTheme.textPrimary,
+                                    side: BorderSide(color: currentTheme.cardBorder),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  ),
+                                  onPressed: _exportAllWorkouts,
+                                  icon: Icon(Icons.share_outlined, size: 16, color: currentTheme.accent),
+                                  label: const Text('Экспорт', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                ),
+                                const SizedBox(width: 8),
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: currentTheme.textPrimary,
+                                    side: BorderSide(color: currentTheme.cardBorder),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  ),
+                                  onPressed: _openImportWorkoutDialog,
+                                  icon: Icon(Icons.file_upload_outlined, size: 16, color: currentTheme.accent),
+                                  label: const Text('Импорт', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  tooltip: _isCardView
+                                      ? (l10n?.switchToListView ?? 'Переключить в режим Списка')
+                                      : (l10n?.switchToCardView ?? 'Переключить в режим Плитки'),
+                                  icon: Icon(
+                                    _isCardView ? Icons.format_list_bulleted : Icons.grid_view_rounded,
+                                    color: currentTheme.accent,
+                                    size: 26,
+                                  ),
+                                  onPressed: _toggleViewMode,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
                             Text(
-                              l10n?.workouts ?? 'Тренировки',
+                              (_selectedEquipment == 'Все' && _selectedType == null)
+                                  ? PluralHelper.workouts(totalWorkoutsCount, l10n?.localeName)
+                                  : '${filteredWorkouts.length} из ${PluralHelper.workouts(totalWorkoutsCount, l10n?.localeName)}',
                               style: TextStyle(
-                                fontSize: 34,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.6,
-                                color: currentTheme.textPrimary,
+                                fontSize: 13,
+                                color: currentTheme.textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ),
-                            const Spacer(),
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: currentTheme.textPrimary,
-                                side: BorderSide(color: currentTheme.cardBorder),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              ),
-                              onPressed: _exportAllWorkouts,
-                              icon: Icon(Icons.share_outlined, size: 16, color: currentTheme.accent),
-                              label: const Text('Экспорт', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                            ),
-                            const SizedBox(width: 8),
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: currentTheme.textPrimary,
-                                side: BorderSide(color: currentTheme.cardBorder),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              ),
-                              onPressed: _openImportWorkoutDialog,
-                              icon: Icon(Icons.file_upload_outlined, size: 16, color: currentTheme.accent),
-                              label: const Text('Импорт', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                            ),
-                            const SizedBox(width: 14),
-                            // Tag selector
-                            Container(
-                              width: 230,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: currentTheme.surface,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: _selectedTag == 'Все' ? currentTheme.cardBorder : currentTheme.accent,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: availableTags.contains(_selectedTag) ? _selectedTag : 'Все',
-                                  dropdownColor: currentTheme.surface,
-                                  icon: Icon(Icons.arrow_drop_down, color: currentTheme.accent, size: 28),
-                                  isExpanded: true,
-                                  borderRadius: BorderRadius.circular(14),
-                                  items: availableTags.map((tag) {
-                                    final isChosen = tag == _selectedTag;
-                                    final displayTag = tag == 'Все' ? (l10n?.allTags ?? 'Все теги') : (tag.startsWith('#') ? tag.substring(1) : tag);
-                                    return DropdownMenuItem<String>(
-                                      value: tag,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            tag == 'Все' ? Icons.apps : Icons.local_offer,
-                                            size: 18,
-                                            color: isChosen ? currentTheme.accent : currentTheme.textSecondary,
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              displayTag,
-                                              style: TextStyle(
-                                                color: isChosen ? currentTheme.accent : currentTheme.textPrimary,
-                                                fontWeight: isChosen ? FontWeight.bold : FontWeight.w600,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ),
-                                          if (isChosen)
-                                            Icon(Icons.check, size: 18, color: currentTheme.accent),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setState(() {
-                                        _selectedTag = value;
-                                      });
-                                    }
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            IconButton(
-                              tooltip: _isCardView
-                                  ? (l10n?.switchToListView ?? 'Переключить в режим Списка')
-                                  : (l10n?.switchToCardView ?? 'Переключить в режим Плитки'),
-                              icon: Icon(
-                                _isCardView ? Icons.format_list_bulleted : Icons.grid_view_rounded,
-                                color: currentTheme.accent,
-                                size: 26,
-                              ),
-                              onPressed: _toggleViewMode,
                             ),
                           ],
                         ),
+                      ),
+                    ),
+
+                    // Equipment Filter Chips (Без инвентаря, Гиря 16 кг, Резинка, etc.)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                        child: _buildEquipmentChips(currentTheme, workouts),
                       ),
                     ),
 
@@ -658,16 +859,19 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                               _buildTypeFilterButton(
                                 type: WorkoutType.tabata,
                                 currentTheme: currentTheme,
+                                count: tabataCount,
                               ),
                               const SizedBox(width: 12),
                               _buildTypeFilterButton(
                                 type: WorkoutType.emom,
                                 currentTheme: currentTheme,
+                                count: emomCount,
                               ),
                               const SizedBox(width: 12),
                               _buildTypeFilterButton(
                                 type: WorkoutType.amrap,
                                 currentTheme: currentTheme,
+                                count: amrapCount,
                               ),
                             ],
                           ),
@@ -798,27 +1002,55 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Тренировка',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        color: currentTheme.textPrimary,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Тренировка',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                            color: currentTheme.textPrimary,
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildSortButton(currentTheme),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              tooltip: 'Поиск тренировки или упражнения',
+                              icon: Icon(
+                                Icons.search_rounded,
+                                color: currentTheme.accent,
+                                size: 28,
+                              ),
+                              onPressed: () => _openSearchDialog(workouts),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Text(
-                          'Комплексы и таймеры',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: currentTheme.textSecondary,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Text(
+                            (_selectedEquipment == 'Все' && _selectedType == null)
+                                ? PluralHelper.workouts(totalWorkoutsCount, l10n?.localeName)
+                                : '${filteredWorkouts.length} из ${PluralHelper.workouts(totalWorkoutsCount, l10n?.localeName)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: currentTheme.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const Spacer(),
                         IconButton(
                           visualDensity: VisualDensity.compact,
                           tooltip: 'Экспорт всех комплексов',
@@ -868,66 +1100,11 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
               ),
             ),
 
-            // Tag Filter Dropdown Menu
+            // Quick Equipment Filter Chips (Без инвентаря, Гиря 16 кг, Резинка, etc.)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: currentTheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _selectedTag == 'Все' ? currentTheme.cardBorder : currentTheme.accent,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: availableTags.contains(_selectedTag) ? _selectedTag : 'Все',
-                      dropdownColor: currentTheme.surface,
-                      icon: Icon(Icons.arrow_drop_down, color: currentTheme.accent, size: 28),
-                      isExpanded: true,
-                      borderRadius: BorderRadius.circular(16),
-                      items: availableTags.map((tag) {
-                        final isChosen = tag == _selectedTag;
-                        final displayTag = tag == 'Все' ? (l10n?.allTags ?? 'Все теги') : (tag.startsWith('#') ? tag.substring(1) : tag);
-                        return DropdownMenuItem<String>(
-                          value: tag,
-                          child: Row(
-                            children: [
-                              Icon(
-                                tag == 'Все' ? Icons.apps : Icons.local_offer,
-                                size: 18,
-                                color: isChosen ? currentTheme.accent : currentTheme.textSecondary,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  displayTag,
-                                  style: TextStyle(
-                                    color: isChosen ? currentTheme.accent : currentTheme.textPrimary,
-                                    fontWeight: isChosen ? FontWeight.bold : FontWeight.w600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                              if (isChosen)
-                                Icon(Icons.check, size: 18, color: currentTheme.accent),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedTag = value;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
+                padding: const EdgeInsets.only(top: 4, bottom: 2),
+                child: _buildEquipmentChips(currentTheme, workouts),
               ),
             ),
 
@@ -942,16 +1119,19 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                       _buildTypeFilterButton(
                         type: WorkoutType.tabata,
                         currentTheme: currentTheme,
+                        count: tabataCount,
                       ),
                       const SizedBox(width: 8),
                       _buildTypeFilterButton(
                         type: WorkoutType.emom,
                         currentTheme: currentTheme,
+                        count: emomCount,
                       ),
                       const SizedBox(width: 8),
                       _buildTypeFilterButton(
                         type: WorkoutType.amrap,
                         currentTheme: currentTheme,
+                        count: amrapCount,
                       ),
                     ],
                   ),
@@ -1024,12 +1204,32 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
               Icon(Icons.fitness_center, size: 76, color: Colors.white.withValues(alpha: 0.1)),
               const SizedBox(height: 16),
               Text(
-                _selectedTag == 'Все' && _selectedType == null
+                _selectedEquipment == 'Все' && _selectedType == null
                     ? (l10n?.createWorkoutPrompt ?? 'Нет тренировок\nНажмите «+», чтобы добавить')
                     : 'Нет тренировок по выбранным фильтрам',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: currentTheme.textSecondary, fontSize: 16, fontWeight: FontWeight.w500),
               ),
+              if (_selectedEquipment != 'Все' || _selectedType != null) ...[
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: currentTheme.accent,
+                    side: BorderSide(color: currentTheme.accent.withValues(alpha: 0.6)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  ),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _selectedEquipment = 'Все';
+                      _selectedType = null;
+                    });
+                  },
+                  icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
+                  label: const Text('Сбросить фильтры', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
             ],
           ),
         ),
@@ -1097,7 +1297,7 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                   recentBadgeText: recentBadgeText,
                   isDesktop: isDesktop,
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => TimerScreen(workout: workout)));
+                    _startWorkoutWithWarmup(workout);
                   },
                   onExport: () => _exportWorkout(workout),
                   onEdit: () => _editWorkout(workout),
@@ -1158,7 +1358,7 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                     isRecentlyCompleted: isRecentlyCompleted,
                     recentBadgeText: recentBadgeText,
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => TimerScreen(workout: workout)));
+                      _startWorkoutWithWarmup(workout);
                     },
                     onExport: () => _exportWorkout(workout),
                     onEdit: () => _editWorkout(workout),
@@ -1215,7 +1415,7 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                         isRecentlyCompleted: isRecentlyCompleted,
                         recentBadgeText: recentBadgeText,
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => TimerScreen(workout: workout)));
+                          _startWorkoutWithWarmup(workout);
                         },
                         onExport: () => _exportWorkout(workout),
                         onEdit: () => _editWorkout(workout),
@@ -1237,14 +1437,18 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
   Widget _buildTypeFilterButton({
     required WorkoutType type,
     required AppThemeConfig currentTheme,
+    int? count,
   }) {
     final isSelected = _selectedType == type;
+    final isDisabled = count != null && count == 0 && !isSelected;
     final color = WorkoutTypeTheme.primary(type, isLight: currentTheme.isLight);
     final icon = WorkoutTypeTheme.icon(type);
     final label = WorkoutTypeTheme.label(type);
 
     return Expanded(
-      child: GestureDetector(
+      child: Opacity(
+        opacity: isDisabled ? 0.45 : 1.0,
+        child: GestureDetector(
         onTap: () {
           setState(() {
             _selectedType = isSelected ? null : type;
@@ -1278,6 +1482,7 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
           ),
           child: FittedBox(
             fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1286,17 +1491,20 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
                 Icon(
                   isSelected ? Icons.check_circle_rounded : icon,
                   color: isSelected ? Colors.white : color,
-                  size: 16,
+                  size: 14,
                 ),
-                const SizedBox(width: 5),
+                const SizedBox(width: 3),
                 Text(
-                  label,
+                  count != null ? '$label ($count)' : label,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible,
                   style: AppTypography.buttonLabel(
                     color: isSelected ? Colors.white : color,
-                    fontSize: 13.5,
+                    fontSize: 12.5,
                   ).copyWith(
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.1,
                     height: 1.15,
                     leadingDistribution: TextLeadingDistribution.even,
                   ),
@@ -1305,6 +1513,194 @@ class _WorkoutListScreenState extends ConsumerState<WorkoutListScreen> {
             ),
           ),
         ),
+      ),
+      ),
+    );
+  }
+
+  Widget _buildEquipmentChips(AppThemeConfig currentTheme, List<Workout> allWorkouts) {
+    final baseList = ['Все', 'Без инвентаря', 'С инвентарём', 'Гиря 16 кг', 'Гиря 6 кг', 'Резинка'];
+    final dynamicEquip = <String>[...baseList];
+    for (final w in allWorkouts) {
+      for (final t in w.tags) {
+        final tl = t.toLowerCase();
+        if ((tl.contains('гантел') || tl.contains('турник') || tl.contains('брус') || tl.contains('петл')) &&
+            !dynamicEquip.any((e) => e.toLowerCase() == t.toLowerCase())) {
+          dynamicEquip.add(TagsRepository.capitalize(t));
+        }
+      }
+    }
+
+    int getEquipCount(String eq) {
+      final baseList = _selectedType == null ? allWorkouts : allWorkouts.where((w) => w.type == _selectedType).toList();
+      if (eq == 'Все') return baseList.length;
+      return baseList.where((w) => _matchesEquipment(w, eq)).length;
+    }
+
+    IconData getEquipIcon(String eq) {
+      final eql = eq.toLowerCase();
+      if (eql == 'все') return Icons.all_inclusive_rounded;
+      if (eql.contains('без инвентар')) return Icons.accessibility_new_rounded;
+      if (eql.contains('с инвентар')) return Icons.fitness_center_rounded;
+      if (eql.contains('гиря') || eql.contains('гантел') || eql.contains('16') || eql.contains('6')) {
+        return Icons.fitness_center_rounded;
+      }
+      if (eql.contains('резин')) return Icons.linear_scale_rounded;
+      return Icons.sports_gymnastics_rounded;
+    }
+
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: dynamicEquip.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final eq = dynamicEquip[index];
+          final isSelected = _selectedEquipment == eq;
+          final count = getEquipCount(eq);
+          final isDisabled = count == 0 && !isSelected;
+          return Opacity(
+            opacity: isDisabled ? 0.45 : 1.0,
+            child: GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _selectedEquipment = isSelected ? 'Все' : eq;
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? currentTheme.accent.withValues(alpha: currentTheme.isLight ? 0.18 : 0.22)
+                    : currentTheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? currentTheme.accent : currentTheme.cardBorder,
+                  width: isSelected ? 1.6 : 1.0,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: currentTheme.accent.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    getEquipIcon(eq),
+                    size: 16,
+                    color: isSelected ? currentTheme.accent : currentTheme.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    count > 0 ? '$eq ($count)' : eq,
+                    style: TextStyle(
+                      color: isSelected ? currentTheme.accent : currentTheme.textPrimary,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSortButton(AppThemeConfig currentTheme) {
+    final sortLabels = {
+      'default': 'По умолчанию',
+      'no_equipment_first': 'Сначала без инвентаря',
+      'equipment_first': 'Сначала с инвентарём',
+      'duration_desc': 'По длительности (сначала долгие)',
+      'duration_asc': 'По длительности (сначала быстрые)',
+      'recent': 'По дате последней тренировки',
+      'frequency': 'По частоте запусков',
+    };
+
+    final isCustomSorted = _sortMode != 'default';
+
+    return PopupMenuButton<String>(
+      tooltip: 'Сортировка: ${sortLabels[_sortMode]}',
+      color: currentTheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: currentTheme.cardBorder),
+      ),
+      icon: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: isCustomSorted
+            ? BoxDecoration(
+                color: currentTheme.accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: currentTheme.accent, width: 1.2),
+              )
+            : null,
+        child: Icon(
+          Icons.sort_rounded,
+          color: isCustomSorted ? currentTheme.accent : currentTheme.textSecondary,
+          size: 24,
+        ),
+      ),
+      onSelected: (mode) {
+        HapticFeedback.selectionClick();
+        setState(() => _sortMode = mode);
+      },
+      itemBuilder: (context) => [
+        _buildSortMenuItem('default', 'По умолчанию', Icons.restart_alt_rounded, currentTheme),
+        _buildSortMenuItem('no_equipment_first', 'Сначала без инвентаря', Icons.accessibility_new_rounded, currentTheme),
+        _buildSortMenuItem('equipment_first', 'Сначала с инвентарём', Icons.fitness_center_rounded, currentTheme),
+        _buildSortMenuItem('duration_desc', 'Длительность (убыв.)', Icons.timer_rounded, currentTheme),
+        _buildSortMenuItem('duration_asc', 'Длительность (возр.)', Icons.timer_outlined, currentTheme),
+        _buildSortMenuItem('recent', 'Недавно выполненные', Icons.history_rounded, currentTheme),
+        _buildSortMenuItem('frequency', 'Частые запуски (топ)', Icons.local_fire_department_rounded, currentTheme),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _buildSortMenuItem(
+    String mode,
+    String title,
+    IconData icon,
+    AppThemeConfig currentTheme,
+  ) {
+    final isSelected = _sortMode == mode;
+    return PopupMenuItem<String>(
+      value: mode,
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: isSelected ? currentTheme.accent : currentTheme.textSecondary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? currentTheme.accent : currentTheme.textPrimary,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          if (isSelected)
+            Icon(Icons.check_rounded, size: 18, color: currentTheme.accent),
+        ],
       ),
     );
   }
